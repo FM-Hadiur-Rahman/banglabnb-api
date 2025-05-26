@@ -10,6 +10,31 @@ exports.createBooking = async (req, res) => {
   const { listingId, dateFrom, dateTo } = req.body;
 
   try {
+    const today = new Date();
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+
+    // ❌ Prevent past or invalid date ranges
+    if (from < today || to <= from) {
+      return res
+        .status(400)
+        .json({ message: "Invalid booking dates. Cannot book in the past." });
+    }
+
+    // ❌ Prevent overlapping bookings
+    const overlapping = await Booking.findOne({
+      listingId,
+      status: { $ne: "cancelled" },
+      $or: [{ dateFrom: { $lte: to }, dateTo: { $gte: from } }],
+    });
+
+    if (overlapping) {
+      return res
+        .status(409)
+        .json({ message: "This listing is already booked for those dates." });
+    }
+
+    // ✅ Create the booking
     const newBooking = await Booking.create({
       guestId: req.user.id,
       listingId,
@@ -17,31 +42,45 @@ exports.createBooking = async (req, res) => {
       dateTo,
     });
 
-    // ✅ Fetch guest and listing details for email
+    // ✅ Notify guest and host via email
     const guest = await User.findById(req.user.id);
-    const listing = await Listing.findById(listingId);
+    const listing = await Listing.findById(listingId).populate("hostId");
 
     if (guest && listing) {
+      // 🎉 Email to Guest
       await sendEmail(
         guest.email,
-        "Your BanglaBnB Booking is Confirmed!",
+        "✅ Your BanglaBnB Booking is Confirmed!",
         `
-          <h2>Hi ${guest.name},</h2>
-          <p>✅ Your booking at <strong>${
-            listing.title
-          }</strong> is confirmed.</p>
-          <p>📍 Location: ${listing.location}</p>
-          <p>📅 Dates: ${new Date(dateFrom).toLocaleDateString()} → ${new Date(
-          dateTo
-        ).toLocaleDateString()}</p>
-          <p>Thank you for choosing BanglaBnB!</p>
+        <h2>Hi ${guest.name},</h2>
+        <p>Your booking at <strong>${listing.title}</strong> is confirmed.</p>
+        <p>📍 Location: ${listing.location}</p>
+        <p>📅 Dates: ${from.toLocaleDateString()} → ${to.toLocaleDateString()}</p>
+        <p>Thank you for using BanglaBnB!</p>
         `
       );
+
+      // 📬 Email to Host
+      if (listing.hostId?.email) {
+        await sendEmail(
+          listing.hostId.email,
+          "📢 New Booking Request on BanglaBnB!",
+          `
+          <h2>Hello ${listing.hostId.name},</h2>
+          <p>${guest.name} has booked your listing: <strong>${
+            listing.title
+          }</strong></p>
+          <p>📍 Location: ${listing.location}</p>
+          <p>📅 Dates: ${from.toLocaleDateString()} → ${to.toLocaleDateString()}</p>
+          <p>Please confirm or cancel it from your dashboard.</p>
+          `
+        );
+      }
     }
 
     res.status(201).json(newBooking);
   } catch (err) {
-    console.error("❌ Booking failed:", err); // Optional: add this to debug
+    console.error("❌ Booking failed:", err);
     res
       .status(500)
       .json({ message: "Failed to create booking", error: err.message });
