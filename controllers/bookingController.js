@@ -105,19 +105,19 @@ exports.cancelBooking = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
+    // Find the listing to check host ownership
     const listing = await Listing.findById(booking.listingId);
-
+    const isHost = listing.hostId.toString() === req.user.id;
     const isGuest = booking.guestId.toString() === req.user.id;
-    const isHost =
-      req.user.role === "host" && listing?.hostId.toString() === req.user.id;
 
-    if (!isGuest && !isHost) {
-      return res.status(403).json({ message: "Unauthorized to cancel" });
+    if (!isHost && !isGuest) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to cancel this booking" });
     }
 
     booking.status = "cancelled";
     await booking.save();
-
     res.json({ message: "Booking cancelled" });
   } catch (err) {
     console.error("❌ Cancel failed:", err);
