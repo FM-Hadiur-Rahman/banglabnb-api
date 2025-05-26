@@ -103,6 +103,7 @@ exports.acceptBooking = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
+
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
     // Find the listing to check host ownership
