@@ -107,21 +107,17 @@ exports.cancelBooking = async (req, res) => {
 
     const listing = await Listing.findById(booking.listingId);
 
-    // Guest can cancel their own booking
     const isGuest = booking.guestId.toString() === req.user.id;
-
-    // Host can cancel if they own the listing
     const isHost =
       req.user.role === "host" && listing?.hostId.toString() === req.user.id;
 
     if (!isGuest && !isHost) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized to cancel this booking" });
+      return res.status(403).json({ message: "Unauthorized to cancel" });
     }
 
     booking.status = "cancelled";
     await booking.save();
+
     res.json({ message: "Booking cancelled" });
   } catch (err) {
     console.error("❌ Cancel failed:", err);
