@@ -79,6 +79,26 @@ exports.getBookingsByHost = async (req, res) => {
   }
 };
 
+// ✅ Accept a booking
+exports.acceptBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // Only host can accept
+    const listing = await Listing.findById(booking.listingId);
+    if (listing.hostId.toString() !== req.user.id)
+      return res.status(403).json({ message: "Not authorized" });
+
+    booking.status = "confirmed";
+    await booking.save();
+    res.json({ message: "Booking accepted" });
+  } catch (err) {
+    console.error("❌ Accept failed:", err);
+    res.status(500).json({ message: "Failed to accept booking" });
+  }
+};
+
 // ✅ Cancel a booking
 exports.cancelBooking = async (req, res) => {
   try {
