@@ -65,6 +65,12 @@ exports.loginUser = async (req, res) => {
   const { email, password, role } = req.body;
   try {
     const user = await User.findOne({ email });
+    if (!user.isVerified) {
+      return res
+        .status(401)
+        .json({ message: "Please verify your email first." });
+    }
+
     if (user && (await user.matchPassword(password))) {
       res.json({
         _id: user._id,
