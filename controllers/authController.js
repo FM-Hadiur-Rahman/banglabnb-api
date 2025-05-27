@@ -26,14 +26,13 @@ exports.registerUser = async (req, res) => {
     });
 
     const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
-    console.log(verifyUrl);
+
     await sendEmail(
       email,
       "Verify your BanglaBnB account",
       `<h2>Hi ${name},</h2>
       <p>Thanks for signing up as a ${role}.</p>
       <p>Please verify your email by clicking the link below:</p>
-      <p>${verifyUrl}</p>
       <a href="${verifyUrl}">Verify Email</a>`
     );
 
