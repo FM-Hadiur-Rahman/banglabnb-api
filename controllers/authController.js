@@ -94,9 +94,6 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// controllers/authController.js
-const crypto = require("crypto");
-
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
