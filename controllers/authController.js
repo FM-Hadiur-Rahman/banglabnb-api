@@ -110,7 +110,17 @@ exports.forgotPassword = async (req, res) => {
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}&email=${email}`;
   // Send `resetUrl` to user via email (use nodemailer/sendgrid/etc)
-
+  // ✅ Send Email
+  await sendEmail({
+    to: user.email,
+    subject: "🔐 Reset your password",
+    html: `
+      <p>Hello ${user.name},</p>
+      <p>Click below to reset your password:</p>
+      <a href="${resetUrl}" target="_blank">${resetUrl}</a>
+      <p>This link will expire in 15 minutes.</p>
+    `,
+  });
   res.json({ message: "✅ Reset link sent to your email." });
 };
 
