@@ -170,7 +170,13 @@ exports.registerStep1 = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // ✅ Generate token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
 
     const user = await User.create({
       name,
@@ -181,12 +187,12 @@ exports.registerStep1 = async (req, res) => {
       division,
       district,
       isVerified: false,
-      verificationToken,
+      verificationToken: hashedToken, // ✅ save hashed token
       identityVerified: false,
       signupStep: 1,
     });
 
-    const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${rawToken}`; // ✅ send raw token in URL
 
     await sendEmail({
       to: email,
@@ -206,6 +212,7 @@ exports.registerStep1 = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 exports.verifyIdentityHandler = async (req, res) => {
   const { userId } = req.body;
   const { idDocument, livePhoto } = req.files;
