@@ -83,7 +83,6 @@ exports.verifyIdentityHandler = async (req, res) => {
 };
 
 // authController.js
-const crypto = require("crypto");
 
 exports.verifyEmail = async (req, res) => {
   const { token } = req.query;
