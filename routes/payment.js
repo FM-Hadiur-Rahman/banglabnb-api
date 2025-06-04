@@ -3,6 +3,9 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 const Booking = require("../models/Booking");
+const User = require("../models/User");
+const Listing = require("../models/Listing");
+const sendEmail = require("../utils/sendEmail"); // for notifications
 const qs = require("querystring");
 
 router.post("/initiate", async (req, res) => {
@@ -68,19 +71,61 @@ router.post("/initiate", async (req, res) => {
 });
 
 // ✅ SSLCOMMERZ will POST here after payment success
+// 1️⃣ POST: SSLCOMMERZ redirects here after successful payment
 router.post("/success", async (req, res) => {
   const { tran_id, val_id, amount } = req.body;
 
   try {
+    // Find the booking using the transaction ID
     const booking = await Booking.findOne({ transactionId: tran_id });
     if (!booking) return res.status(404).send("Booking not found");
 
+    // Update booking status
     booking.paymentStatus = "paid";
     booking.valId = val_id;
     booking.paidAmount = amount;
     booking.paidAt = new Date();
     booking.status = "confirmed";
     await booking.save();
+
+    // Fetch related guest and listing (with host)
+    const guest = await User.findById(booking.guestId);
+    const listing = await Listing.findById(booking.listingId).populate(
+      "hostId"
+    );
+
+    const from = new Date(booking.dateFrom).toLocaleDateString();
+    const to = new Date(booking.dateTo).toLocaleDateString();
+
+    // 🎉 Email to Guest
+    if (guest && listing) {
+      await sendEmail({
+        to: guest.email,
+        subject: "✅ Your BanglaBnB Booking is Confirmed!",
+        html: `
+          <h2>Hi ${guest.name},</h2>
+          <p>Your payment for <strong>${listing.title}</strong> was successful.</p>
+          <p>📍 Location: ${listing.location?.address}</p>
+          <p>📅 Dates: ${from} → ${to}</p>
+          <p>Thank you for using BanglaBnB!</p>
+        `,
+      });
+
+      // 📬 Email to Host
+      if (listing.hostId?.email) {
+        await sendEmail({
+          to: listing.hostId.email,
+          subject: "📢 New Paid Booking on BanglaBnB!",
+          html: `
+            <h2>Hello ${listing.hostId.name},</h2>
+            <p>${guest.name} has paid and confirmed a booking for your listing: <strong>${listing.title}</strong></p>
+            <p>📍 Location: ${listing.location?.address}</p>
+            <p>📅 Dates: ${from} → ${to}</p>
+            <p>Please get ready to host!</p>
+          `,
+        });
+      }
+    }
 
     // ✅ Redirect to frontend React route
     res.redirect("https://banglabnb.com/payment-success?status=paid");
