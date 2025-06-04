@@ -18,7 +18,7 @@ router.post("/initiate", async (req, res) => {
   });
 
   const data = {
-    store_id: process.env.SSLCOMMERZ_STORE_ID || "bangl683f39645be2d",
+    store_id: process.env.SSLCOMMERZ_STORE_ID,
     store_passwd: process.env.SSLCOMMERZ_STORE_PASS,
     total_amount: amount,
     currency: "BDT",
@@ -73,12 +73,13 @@ router.post("/initiate", async (req, res) => {
 });
 // 1️⃣ POST: SSLCOMMERZ redirects here after successful payment
 router.post("/success", async (req, res) => {
+  console.log("✅ /api/payment/success HIT!");
+  console.log("📦 BODY:", req.body);
   const { tran_id, val_id, amount } = req.body;
 
   try {
     const booking = await Booking.findOne({ transactionId: tran_id });
     if (!booking) return res.status(404).send("Booking not found");
-    console.log("✅ SUCCESS endpoint hit!", req.body);
 
     booking.paymentStatus = "paid";
     booking.valId = val_id;
@@ -128,21 +129,7 @@ router.post("/ipn", async (req, res) => {
       }
     );
   }
-  // res.status(200).send("IPN received");
-  res.send(`
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <title>Redirecting...</title>
-          <script>
-            window.location.href = "https://banglabnb.com/payment-success?status=paid";
-          </script>
-        </head>
-        <body>
-          Redirecting to payment success page...
-        </body>
-      </html>
-    `);
+  res.status(200).send("IPN received");
 });
 
 module.exports = router;
