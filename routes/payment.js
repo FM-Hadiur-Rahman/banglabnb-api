@@ -128,7 +128,21 @@ router.post("/ipn", async (req, res) => {
       }
     );
   }
-  res.status(200).send("IPN received");
+  // res.status(200).send("IPN received");
+  res.send(`
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Redirecting...</title>
+          <script>
+            window.location.href = "https://banglabnb.com/payment-success?status=paid";
+          </script>
+        </head>
+        <body>
+          Redirecting to payment success page...
+        </body>
+      </html>
+    `);
 });
 
 module.exports = router;
