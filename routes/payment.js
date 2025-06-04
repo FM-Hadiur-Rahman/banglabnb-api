@@ -6,6 +6,7 @@ const Booking = require("../models/Booking");
 const User = require("../models/User");
 const Listing = require("../models/Listing");
 const sendEmail = require("../utils/sendEmail"); // for notifications
+const IPNLog = require("../models/IPNLog");
 const qs = require("querystring");
 
 router.post("/initiate", async (req, res) => {
@@ -145,6 +146,7 @@ router.post("/cancel", (req, res) => {
 
 // ✅ IPN: server-to-server validation from SSLCOMMERZ
 router.post("/ipn", async (req, res) => {
+  await IPNLog.create({ payload: req.body });
   const { tran_id, status } = req.body;
 
   if (status === "VALID") {
