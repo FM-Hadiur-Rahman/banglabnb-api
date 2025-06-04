@@ -8,6 +8,9 @@ const Listing = require("../models/Listing");
 const sendEmail = require("../utils/sendEmail"); // for notifications
 const IPNLog = require("../models/IPNLog");
 const qs = require("querystring");
+const generateInvoice = require("../utils/generateInvoice");
+const path = require("path");
+const Notification = require("../models/Notification");
 
 router.post("/initiate", async (req, res) => {
   const { amount, bookingId, customer } = req.body;
@@ -127,6 +130,23 @@ router.post("/success", async (req, res) => {
         });
       }
     }
+
+    await sendEmail({
+      to: booking.guestId.email,
+      subject: "📄 Your Booking Invoice - BanglaBnB",
+      html: `<p>Hi ${booking.guestId.name}, please find your booking invoice attached.</p>`,
+      attachments: [
+        {
+          filename: `invoice-${booking._id}.pdf`,
+          path: invoicePath,
+        },
+      ],
+    });
+    await Notification.create({
+      userId: booking.guestId._id,
+      message: `🎉 Payment received for booking at ${booking.listingId.title}`,
+      type: "payment",
+    });
 
     // ✅ Redirect to frontend React route
     res.redirect("https://banglabnb.com/payment-success?status=paid");
