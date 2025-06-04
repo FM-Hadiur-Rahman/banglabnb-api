@@ -99,11 +99,7 @@ router.post("/success", async (req, res) => {
     const to = new Date(booking.dateTo).toLocaleDateString();
 
     // 🧾 Generate Invoice
-    const invoicePath = path.join(
-      __dirname,
-      `../invoices/invoice-${booking._id}.pdf`
-    );
-    await generateInvoice(booking, listing, guest); // 🧾 Utility function
+    const invoicePath = await generateInvoice(booking, listing, guest); // 🧾 Utility function
 
     // 📧 Guest email
     await sendEmail({
