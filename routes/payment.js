@@ -2,28 +2,26 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
-const Booking = require("../models/Booking"); // 🔄 Import your Booking model
+const Booking = require("../models/Booking");
 const qs = require("querystring");
 
 router.post("/initiate", async (req, res) => {
   const { amount, bookingId, customer } = req.body;
 
-  // 1. Generate transaction ID
   const tran_id = `BNB_${bookingId}_${Date.now()}`;
 
-  // 2. Save transaction ID to booking
   await Booking.findByIdAndUpdate(bookingId, {
     transactionId: tran_id,
     paymentStatus: "unpaid",
   });
 
   const data = {
-    store_id: process.env.SSLCOMMERZ_STORE_ID,
+    store_id: process.env.SSLCOMMERZ_STORE_ID || "bangl683f39645be2d",
     store_passwd: process.env.SSLCOMMERZ_STORE_PASS,
     total_amount: amount,
     currency: "BDT",
     tran_id,
-    success_url: "https://banglabnb.com/payment-success",
+    success_url: "https://banglabnb-api.onrender.com/api/payment/success", // ✅ point to backend
     fail_url: "https://banglabnb.com/payment-fail",
     cancel_url: "https://banglabnb.com/payment-cancel",
     ipn_url: "https://banglabnb-api.onrender.com/api/payment/ipn",
@@ -43,19 +41,16 @@ router.post("/initiate", async (req, res) => {
   };
 
   try {
-    // const response = await axios.post(process.env.SSLCOMMERZ_API_URL, data);
     const response = await axios.post(
       process.env.SSLCOMMERZ_API_URL,
-      qs.stringify(data), // encode data
+      qs.stringify(data),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       }
     );
-    console.log("✅ SSLCOMMERZ RESPONSE:", response.data);
 
-    // Important: log fallback if GatewayPageURL is missing
     if (!response.data.GatewayPageURL) {
       console.error("❌ Missing GatewayPageURL. Full response:");
       console.error(response.data);
@@ -71,10 +66,9 @@ router.post("/initiate", async (req, res) => {
     res.status(500).json({ error: "Payment initiation failed" });
   }
 });
-// 1️⃣ POST: SSLCOMMERZ redirects here after successful payment
+
+// ✅ SSLCOMMERZ will POST here after payment success
 router.post("/success", async (req, res) => {
-  console.log("✅ /api/payment/success HIT!");
-  console.log("📦 BODY:", req.body);
   const { tran_id, val_id, amount } = req.body;
 
   try {
@@ -88,21 +82,8 @@ router.post("/success", async (req, res) => {
     booking.status = "confirmed";
     await booking.save();
 
-    // ✅ Use a client-side redirect instead of a 302
-    res.send(`
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <title>Redirecting...</title>
-          <script>
-            window.location.href = "https://banglabnb.com/payment-success?status=paid";
-          </script>
-        </head>
-        <body>
-          Redirecting to payment success page...
-        </body>
-      </html>
-    `);
+    // ✅ Redirect to frontend React route
+    res.redirect("https://banglabnb.com/payment-success?status=paid");
   } catch (err) {
     console.error("❌ Payment success error:", err);
     res.status(500).send("Server error");
@@ -117,6 +98,7 @@ router.post("/cancel", (req, res) => {
   res.redirect("https://banglabnb.com/payment-cancel");
 });
 
+// ✅ IPN: server-to-server validation from SSLCOMMERZ
 router.post("/ipn", async (req, res) => {
   const { tran_id, status } = req.body;
 
@@ -129,6 +111,7 @@ router.post("/ipn", async (req, res) => {
       }
     );
   }
+
   res.status(200).send("IPN received");
 });
 
