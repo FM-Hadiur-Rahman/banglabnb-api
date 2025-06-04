@@ -78,6 +78,7 @@ router.post("/success", async (req, res) => {
   try {
     const booking = await Booking.findOne({ transactionId: tran_id });
     if (!booking) return res.status(404).send("Booking not found");
+    console.log("✅ SUCCESS endpoint hit!", req.body);
 
     booking.paymentStatus = "paid";
     booking.valId = val_id;
