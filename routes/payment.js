@@ -33,7 +33,7 @@ router.post("/initiate", async (req, res) => {
     cus_city: "Dhaka",
     cus_postcode: "1200",
     cus_country: "Bangladesh",
-    cus_phone: customer.phone,
+    cus_phone: customer.phone || "01763558585",
 
     shipping_method: "NO",
     product_name: "BanglaBnB Booking",
