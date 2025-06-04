@@ -1,8 +1,8 @@
+require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 const Booking = require("../models/Booking"); // 🔄 Import your Booking model
-require("dotenv").config();
 
 router.post("/initiate", async (req, res) => {
   const { amount, bookingId, customer } = req.body;
@@ -17,7 +17,7 @@ router.post("/initiate", async (req, res) => {
   });
 
   const data = {
-    store_id: process.env.SSLCOMMERZ_STORE_ID,
+    store_id: process.env.SSLCOMMERZ_STORE_ID || "bangl683f39645be2d",
     store_passwd: process.env.SSLCOMMERZ_STORE_PASS,
     total_amount: amount,
     currency: "BDT",
