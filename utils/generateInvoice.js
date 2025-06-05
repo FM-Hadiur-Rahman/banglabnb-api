@@ -13,32 +13,29 @@ const generateInvoice = async (booking, listing, guest) => {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // 🖼 Add Logo (replace with your logo path or hosted URL)
-    const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png"); // make sure this file exists
+    // Colors
+    const green = "#006a4e";
+    const red = "#e53935";
+
+    // Header Background
+    doc
+      .rect(0, 0, doc.page.width, 100)
+      .fill(green)
+      .fillColor("white")
+      .fontSize(28)
+      .text("INVOICE", 50, 40);
+
+    // Logo (optional)
+    const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 45, { width: 120 });
+      doc.image(logoPath, 450, 30, { width: 100 });
     }
 
-    // Branding header
+    // Guest Info
     doc
-      .fillColor("#1a202c")
-      .fontSize(20)
-      .text("BanglaBnB", 200, 50, { align: "right" });
-
-    doc
-      .fontSize(14)
-      .fillColor("#4a5568")
-      .text("📄 Booking Invoice", { align: "right" })
-      .moveDown();
-
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-
-    // Booking & Guest Info
-    doc
-      .fontSize(12)
       .fillColor("black")
-      .text(`Booking ID: ${booking._id}`)
+      .fontSize(12)
+      .text(`Booking ID: ${booking._id}`, 50, 120)
       .text(`Guest: ${guest.name} (${guest.email})`)
       .text(`Listing: ${listing.title}`)
       .text(`Location: ${listing.location?.address}`)
@@ -46,38 +43,47 @@ const generateInvoice = async (booking, listing, guest) => {
         `Dates: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
           booking.dateTo
         ).toLocaleDateString()}`
-      )
-      .moveDown();
+      );
 
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    // Divider
+    doc
+      .moveDown()
+      .moveTo(50, doc.y)
+      .lineTo(550, doc.y)
+      .strokeColor(green)
+      .stroke();
 
-    // 💵 Pricing Summary Table
+    // Pricing
     const nights =
       (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
       (1000 * 60 * 60 * 24);
     const baseRate = listing.price;
-    const serviceFee = 100; // you can make this dynamic
+    const serviceFee = 100;
     const total = baseRate * nights + serviceFee;
+
+    const formatCurrency = (val) => `৳${val.toFixed(2)}`;
 
     doc
       .moveDown(1)
-      .fontSize(13)
-      .text("💵 Price Breakdown:", { underline: true });
-
-    const formatCurrency = (value) => `৳${value.toFixed(2)}`;
+      .fontSize(14)
+      .fillColor(red)
+      .text("💵 Price Breakdown", { underline: true });
 
     doc
-      .moveDown(0.5)
+      .fillColor("black")
       .fontSize(12)
       .text(`Nightly Rate (৳${baseRate} x ${nights} nights):`, 50)
       .text(formatCurrency(baseRate * nights), 0, doc.y, { align: "right" })
       .text("Service Fee:", 50)
       .text(formatCurrency(serviceFee), 0, doc.y, { align: "right" })
-      .text("Total Amount Paid:", 50, doc.y + 5)
+      .text("Total Amount Paid:", 50)
       .font("Helvetica-Bold")
-      .text(formatCurrency(total), 0, doc.y + 5, { align: "right" })
-      .font("Helvetica");
+      .fillColor(red)
+      .text(formatCurrency(total), 0, doc.y, { align: "right" })
+      .font("Helvetica")
+      .fillColor("black");
 
+    // Footer
     doc.moveDown(2);
     doc
       .fontSize(10)
