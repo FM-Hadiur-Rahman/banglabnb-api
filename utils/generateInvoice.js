@@ -12,131 +12,135 @@ const generateInvoice = async (booking, listing, guest) => {
     const filePath = path.join(invoiceDir, `invoice-${booking._id}.pdf`);
     const qrPath = path.join(invoiceDir, `qr-${booking._id}.png`);
     const doc = new PDFDocument({ size: "A4", margin: 50 });
-
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
+    // 📁 Load logo and font
     const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
     const banglaFontPath = path.join(
       __dirname,
       "../fonts/NotoSansBengali-VariableFont_wdth,wght.ttf"
     );
-
-    if (fs.existsSync(banglaFontPath)) {
+    if (fs.existsSync(banglaFontPath))
       doc.registerFont("Bangla", banglaFontPath);
-    }
 
     // 🔷 Header background
-    doc.rect(0, 0, 600, 100).fill("#e6f2f0");
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 30, { width: 80 });
-    }
+    doc.rect(0, 0, doc.page.width, 100).fill("#e6f2f0");
+    if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 30, { width: 80 });
 
     doc
       .fillColor("#006a4e")
       .fontSize(22)
       .font("Helvetica-Bold")
-      .text("BanglaBnB", 150, 40, { align: "right" })
+      .text("BanglaBnB", 0, 40, { align: "right", width: doc.page.width - 60 });
+
+    doc
       .fontSize(14)
       .fillColor("#d21034")
       .text("📄 Booking Invoice", { align: "right" });
 
-    doc.moveDown().moveTo(50, 110).lineTo(550, 110).stroke();
+    doc.moveTo(50, 110).lineTo(550, 110).stroke();
 
-    // ✅ Calculations
+    // 📊 Booking Summary
     const nights = Math.ceil(
       (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
         (1000 * 60 * 60 * 24)
     );
-    const baseRate = listing.price; // ✅ Fixed: define base rate!
+    const baseRate = listing.price;
     const baseTotal = baseRate * nights;
     const serviceFee = baseTotal * 0.1;
-    const tax = (baseTotal + serviceFee) * 0.1; // 10% VAT
+    const tax = (baseTotal + serviceFee) * 0.1;
     const total = baseTotal + serviceFee + tax;
 
-    const formatCurrency = (val) =>
-      `BDT ${val.toLocaleString("en-BD", { minimumFractionDigits: 2 })}`;
+    const formatCurrency = (val) => `BDT ${val.toFixed(2)}`;
+    let y = 130;
 
-    // 🧾 Booking Info Box
     doc
-      .rect(50, 120, 500, 100)
+      .rect(50, y, 500, 110)
       .fill("#f8f8f8")
       .stroke()
       .fillColor("black")
       .font("Helvetica")
       .fontSize(11);
 
-    doc
-      .text(`Booking ID: ${booking._id}`, 60, 130)
-      .text(`Guest: ${guest.name} (${guest.email})`)
-      .text(`Listing: ${listing.title}`)
-      .text(`Address: ${listing.location?.address}`)
-      .text(
-        `Dates: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
-          booking.dateTo
-        ).toLocaleDateString()}`
-      )
-      .text(`Status: ${booking.paymentStatus}`);
+    y += 10;
+    doc.text(`Booking ID: ${booking._id}`, 60, y);
+    y += 15;
+    doc.text(`Guest: ${guest.name} (${guest.email})`, 60, y);
+    y += 15;
+    doc.text(`Listing: ${listing.title}`, 60, y);
+    y += 15;
+    doc.text(`Address: ${listing.location?.address}`, 60, y);
+    y += 15;
+    doc.text(
+      `Dates: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
+        booking.dateTo
+      ).toLocaleDateString()}`,
+      60,
+      y
+    );
+    y += 15;
+    doc.text(`Status: ${booking.paymentStatus}`, 60, y);
 
-    // 🌐 Bangla Block
-    doc.moveDown().moveDown();
+    // 🏁 Bangla Section
+    y += 40;
     doc.font("Bangla").fontSize(11).fillColor("#444");
-    doc.text(`অতিথি: ${guest.name}`);
-    doc.text(`মেইল: ${guest.email}`);
-    doc.text(`অবস্থান: ${listing.location?.address}`);
+    doc.text(`অতিথি: ${guest.name}`, 60, y);
+    y += 15;
+    doc.text(`মেইল: ${guest.email}`, 60, y);
+    y += 15;
+    doc.text(`অবস্থান: ${listing.location?.address}`, 60, y);
+    y += 15;
     doc.text(
       `তারিখ: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
         booking.dateTo
-      ).toLocaleDateString()}`
+      ).toLocaleDateString()}`,
+      60,
+      y
     );
 
-    // 💵 Price Breakdown (Table style)
+    // 💰 Price Breakdown
+    y += 40;
     doc
-      .moveDown()
       .font("Helvetica-Bold")
       .fillColor("black")
       .fontSize(13)
-      .text("💵 Payment Summary", { underline: true });
-
+      .text("Payment Summary", 60, y);
+    y += 20;
     doc.font("Helvetica").fontSize(12);
-    const left = 60,
-      right = 500;
 
-    doc
-      .text(
-        `Nightly Rate (${formatCurrency(baseRate)} × ${nights} nights):`,
-        left
-      )
-      .text(formatCurrency(baseTotal), right, doc.y, { align: "right" });
+    doc.text(`Nightly Rate (BDT ${baseRate} × ${nights} nights):`, 60, y);
+    doc.text(formatCurrency(baseTotal), 450, y, { align: "right" });
+    y += 20;
 
-    doc
-      .text("Service Fee (10%):", left)
-      .text(formatCurrency(serviceFee), right, doc.y, { align: "right" });
+    doc.text("Service Fee (10%):", 60, y);
+    doc.text(formatCurrency(serviceFee), 450, y, { align: "right" });
+    y += 20;
 
-    doc
-      .text("VAT (10%):", left)
-      .text(formatCurrency(tax), right, doc.y, { align: "right" });
+    doc.text("VAT (10%):", 60, y);
+    doc.text(formatCurrency(tax), 450, y, { align: "right" });
+    y += 20;
 
-    doc
-      .font("Helvetica-Bold")
-      .text("Total Amount Paid:", left)
-      .text(formatCurrency(total), right, doc.y, { align: "right" });
+    doc.font("Helvetica-Bold").text("Total Amount Paid:", 60, y);
+    doc.text(formatCurrency(total), 450, y, { align: "right" });
+    y += 30;
 
-    // 📅 Meta Info
-    doc.moveDown(2).font("Helvetica").fontSize(11).fillColor("gray");
-    doc.text(`Invoice Number: INV-${booking._id}`);
-    doc.text(`Issued on: ${new Date().toLocaleDateString("en-GB")}`);
+    // 📄 Meta
+    doc.font("Helvetica").fontSize(11).fillColor("gray");
+    doc.text(`Invoice Number: INV-${booking._id}`, 60, y);
+    y += 15;
+    doc.text(`Issued on: ${new Date().toLocaleDateString("en-GB")}`, 60, y);
 
-    // 🖨️ QR Code
+    // 📌 QR Code
     await QRCode.toFile(
       qrPath,
       `https://banglabnb.com/bookings/${booking._id}`,
       { width: 100 }
     );
-    doc.image(qrPath, 450, doc.y - 40, { width: 80 });
+    doc.image(qrPath, 450, y - 30, { width: 80 });
 
-    // 🔻 Footer Strip
-    doc.rect(0, 760, 600, 40).fill("#f0f0f0");
+    // Footer
+    doc.rect(0, 760, doc.page.width, 40).fill("#f0f0f0");
     doc
       .fillColor("gray")
       .fontSize(10)
