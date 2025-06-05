@@ -99,9 +99,7 @@ router.post("/success", async (req, res) => {
     const to = new Date(booking.dateTo).toLocaleDateString();
 
     // 🧾 Generate Invoice
-    const invoiceUrl = await generateInvoice(booking, listing, guest);
-    booking.invoiceUrl = invoiceUrl;
-    await booking.save();
+    const invoicePath = await generateInvoice(booking, listing, guest);
 
     // 📧 Guest email
     await sendEmail({
@@ -146,6 +144,13 @@ router.post("/success", async (req, res) => {
       <p style="text-align: center; font-size: 12px; margin-top: 24px; color: #a0aec0;">© ${new Date().getFullYear()} BanglaBnB, Bangladesh</p>
     </div>
   `,
+      attachments: [
+        {
+          filename: `invoice-${booking._id}.pdf`,
+          path: invoicePath,
+          contentType: "application/pdf",
+        },
+      ],
     });
 
     // 📧 Host email
@@ -197,6 +202,13 @@ router.post("/success", async (req, res) => {
         <p style="text-align: center; font-size: 12px; margin-top: 24px; color: #a0aec0;">© ${new Date().getFullYear()} BanglaBnB, Bangladesh</p>
       </div>
     `,
+        attachments: [
+          {
+            filename: `invoice-${booking._id}.pdf`,
+            path: invoicePath,
+            contentType: "application/pdf",
+          },
+        ],
       });
     }
 

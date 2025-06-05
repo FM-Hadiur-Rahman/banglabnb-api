@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
-const { cloudinary } = require("../config/cloudinary");
 
 const generateInvoice = async (booking, listing, guest) => {
   return new Promise(async (resolve, reject) => {
@@ -11,12 +10,13 @@ const generateInvoice = async (booking, listing, guest) => {
       fs.mkdirSync(invoiceDir, { recursive: true });
 
     const filePath = path.join(invoiceDir, `invoice-${booking._id}.pdf`);
+    const qrPath = path.join(invoiceDir, `qr-${booking._id}.png`);
     const doc = new PDFDocument({ size: "A4", margin: 50 });
 
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // ✅ Register custom Bangla font
+    // ✅ Load Bangla font if available
     const banglaFontPath = path.join(
       __dirname,
       "../fonts/NotoSansBengali-VariableFont_wdth,wght.ttf"
@@ -31,19 +31,16 @@ const generateInvoice = async (booking, listing, guest) => {
       doc.image(logoPath, 50, 50, { width: 100 });
     }
 
-    // ✅ Header
     doc
       .fillColor("#006a4e")
       .fontSize(22)
-      .text("BanglaBnB", 200, 50, { align: "right" });
-    doc
+      .text("BanglaBnB", 200, 50, { align: "right" })
       .fontSize(14)
       .fillColor("#d21034")
       .text("📄 Booking Invoice", { align: "right" });
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
 
-    // ✅ Booking Info
+    doc.moveDown().moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+
     const nights = Math.ceil(
       (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
         (1000 * 60 * 60 * 24)
@@ -70,7 +67,7 @@ const generateInvoice = async (booking, listing, guest) => {
       .text(`Payment Status: ${booking.paymentStatus}`)
       .moveDown();
 
-    // ✅ Bangla Translation
+    // Bangla Translation
     doc
       .font("Bangla")
       .fillColor("#333")
@@ -85,30 +82,29 @@ const generateInvoice = async (booking, listing, guest) => {
       )
       .moveDown();
 
-    // ✅ Price Breakdown
+    // Price Breakdown
     doc
       .font("Helvetica")
       .fillColor("black")
       .fontSize(13)
       .text("💵 Price Breakdown", { underline: true });
+
     doc
       .fontSize(12)
       .text(`Nightly Rate (৳${baseRate} x ${nights} nights):`, 50)
       .text(formatCurrency(baseRate * nights), 0, doc.y, { align: "right" })
-      .text(`Service Fee:`, 50)
+      .text("Service Fee:", 50)
       .text(formatCurrency(serviceFee), 0, doc.y, { align: "right" })
       .text("Total Amount Paid:", 50, doc.y + 5)
       .font("Helvetica-Bold")
       .text(formatCurrency(total), 0, doc.y + 5, { align: "right" });
 
-    // ✅ Invoice number and date
-    doc.moveDown(2);
-    doc.font("Helvetica").fontSize(11).fillColor("gray");
+    // Invoice Number & Date
+    doc.moveDown(2).font("Helvetica").fontSize(11).fillColor("gray");
     doc.text(`Invoice Number: INV-${booking._id}`);
     doc.text(`Issued on: ${new Date().toLocaleDateString()}`);
 
-    // ✅ Generate QR code
-    const qrPath = path.join(invoiceDir, `qr-${booking._id}.png`);
+    // Generate QR
     await QRCode.toFile(
       qrPath,
       `https://banglabnb.com/bookings/${booking._id}`,
@@ -116,7 +112,7 @@ const generateInvoice = async (booking, listing, guest) => {
     );
     doc.image(qrPath, 450, doc.y - 40, { width: 80 });
 
-    // ✅ Footer
+    // Footer
     doc.moveDown(4);
     doc
       .fontSize(10)
@@ -127,27 +123,10 @@ const generateInvoice = async (booking, listing, guest) => {
 
     doc.end();
 
-    stream.on("finish", async () => {
-      try {
-        const result = await cloudinary.uploader.upload(filePath, {
-          folder: "banglabnb/invoices",
-          resource_type: "raw",
-        });
-
-        // ✅ Generate downloadable URL
-        const invoicePublicId = result.public_id;
-
-        // ✅ This works best for raw file download
-        const downloadUrl = cloudinary.url(result.public_id, {
-          secure: true,
-          flags: "attachment",
-          resource_type: "raw",
-          attachment: `invoice-${booking._id}.pdf`,
-        });
-        resolve(downloadUrl);
-      } catch (err) {
-        reject(err);
-      }
+    stream.on("finish", () => {
+      // ✅ Return local file path for attachment
+      resolve(filePath);
+      fs.unlink(qrPath, () => {});
     });
 
     stream.on("error", reject);
