@@ -130,8 +130,8 @@ router.post("/success", async (req, res) => {
       <p>Status: ✅ Paid</p>
 
       <div style="margin-top: 20px; text-align: center;">
-        <a href="${invoiceUrl}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-          📥 View Invoice PDF
+        <a href="${invoiceUrl}" target="_blank" download style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+          📥 Download Invoice PDF
         </a>
       </div>
 
@@ -182,7 +182,7 @@ router.post("/success", async (req, res) => {
         }</strong><br/>Status: ✅ Paid</p>
 
         <div style="margin-top: 20px; text-align: center;">
-          <a href="${invoiceUrl}" target="_blank" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+          <a href="${invoiceUrl}" target="_blank" download style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
             📄 View Booking Invoice
           </a>
         </div>
