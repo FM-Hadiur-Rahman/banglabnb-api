@@ -137,19 +137,12 @@ const generateInvoice = async (booking, listing, guest) => {
         // ✅ Generate downloadable URL
         const invoicePublicId = result.public_id;
 
-        const downloadUrl = cloudinary.url(invoicePublicId, {
+        // ✅ This works best for raw file download
+        const downloadUrl = cloudinary.utils.download_url(result.public_id, {
           resource_type: "raw",
-          type: "upload",
-          secure: true,
-          flags: "attachment",
           attachment: `invoice-${booking._id}.pdf`,
         });
-
-        // ✅ Cleanup local files
-        fs.unlink(filePath, () => {});
-        fs.unlink(qrPath, () => {});
-
-        resolve(downloadUrl); // ✅ Return this URL for DB and email
+        resolve(downloadUrl);
       } catch (err) {
         reject(err);
       }
