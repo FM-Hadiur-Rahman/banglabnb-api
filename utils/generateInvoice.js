@@ -10,110 +10,114 @@ const generateInvoice = async (booking, listing, guest) => {
     if (!fs.existsSync(invoiceDir))
       fs.mkdirSync(invoiceDir, { recursive: true });
 
-    const fileName = `invoice-${booking._id}.pdf`;
-    const filePath = path.join(invoiceDir, fileName);
+    const filePath = path.join(invoiceDir, `invoice-${booking._id}.pdf`);
     const doc = new PDFDocument({ size: "A4", margin: 50 });
+
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // 🖼 Add Logo
-    const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 45, { width: 120 });
+    // ✅ Register custom Bangla font
+    const banglaFontPath = path.join(
+      __dirname,
+      "../fonts/NotoSansBengali-VariableFont_wdth,wght.ttf"
+    );
+    if (fs.existsSync(banglaFontPath)) {
+      doc.registerFont("Bangla", banglaFontPath);
     }
 
-    // 🟢 Invoice Header with BD Flag Colors
-    doc
-      .fillColor("#006a4e") // dark green
-      .fontSize(22)
-      .font("Helvetica-Bold")
-      .text("BanglaBnB", 200, 50, { align: "right" })
-      .fontSize(14)
-      .fillColor("#e62e04") // red
-      .text("📄 Booking Invoice / বুকিং চালান", { align: "right" })
-      .moveDown();
+    // ✅ Add logo
+    const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 50, { width: 100 });
+    }
 
+    // ✅ Header
+    doc
+      .fillColor("#006a4e")
+      .fontSize(22)
+      .text("BanglaBnB", 200, 50, { align: "right" });
+    doc
+      .fontSize(14)
+      .fillColor("#d21034")
+      .text("📄 Booking Invoice", { align: "right" });
     doc.moveDown(1);
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
 
-    // 🔢 Invoice Info
-    doc
-      .fontSize(12)
-      .fillColor("black")
-      .text(`Invoice #: ${booking._id}`)
-      .text(`চালান নম্বরঃ ${booking._id}`)
-      .text(`Status: ${booking.paymentStatus || "unpaid"}`)
-      .text(
-        `অবস্থা: ${booking.paymentStatus === "paid" ? "পরিশোধিত" : "অপরিশোধিত"}`
-      )
-      .moveDown();
+    // ✅ Booking Info
+    const nights = Math.ceil(
+      (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
+        (1000 * 60 * 60 * 24)
+    );
+    const baseRate = listing.price;
+    const serviceFee = 100;
+    const total = baseRate * nights + serviceFee;
 
-    // 👤 Guest Info
+    const formatCurrency = (value) => `৳${value.toFixed(2)}`;
+
     doc
+      .moveDown()
+      .fillColor("black")
+      .fontSize(12)
+      .text(`Booking ID: ${booking._id}`)
       .text(`Guest: ${guest.name} (${guest.email})`)
-      .text(`অতিথিঃ ${guest.name}`)
       .text(`Listing: ${listing.title}`)
-      .text(`স্থানঃ ${listing.location?.address}`)
+      .text(`Location: ${listing.location?.address}`)
       .text(
         `Dates: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
           booking.dateTo
         ).toLocaleDateString()}`
       )
+      .text(`Payment Status: ${booking.paymentStatus}`)
+      .moveDown();
+
+    // ✅ Bangla Translation
+    doc
+      .font("Bangla")
+      .fillColor("#333")
+      .fontSize(11)
+      .text(`অতিথি: ${guest.name}`, { continued: true })
+      .text(`  •  মেইল: ${guest.email}`)
+      .text(`স্থান: ${listing.location?.address}`)
       .text(
-        `তারিখঃ ${new Date(booking.dateFrom).toLocaleDateString(
-          "bn-BD"
-        )} → ${new Date(booking.dateTo).toLocaleDateString("bn-BD")}`
+        `তারিখ: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
+          booking.dateTo
+        ).toLocaleDateString()}`
       )
       .moveDown();
 
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-
-    // 💵 Pricing Summary
-    const nights =
-      (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
-      (1000 * 60 * 60 * 24);
-    const baseRate = listing.price;
-    const serviceFee = 100;
-    const total = baseRate * nights + serviceFee;
-
+    // ✅ Price Breakdown
     doc
-      .moveDown(1)
+      .font("Helvetica")
+      .fillColor("black")
       .fontSize(13)
-      .text("💵 Price Breakdown / মূল্য বিবরণী", { underline: true });
-
-    const formatCurrency = (val) => `৳${val.toFixed(2)}`;
-
+      .text("💵 Price Breakdown", { underline: true });
     doc
       .fontSize(12)
       .text(`Nightly Rate (৳${baseRate} x ${nights} nights):`, 50)
-      .text(`প্রতি রাতের দাম (${nights} রাত):`, 50, doc.y + 15)
-      .text(formatCurrency(baseRate * nights), 0, doc.y - 15, {
-        align: "right",
-      })
-      .moveDown(1)
+      .text(formatCurrency(baseRate * nights), 0, doc.y, { align: "right" })
       .text(`Service Fee:`, 50)
-      .text(`সার্ভিস ফি:`, 50, doc.y + 15)
-      .text(formatCurrency(serviceFee), 0, doc.y - 15, { align: "right" })
-      .moveDown(1)
+      .text(formatCurrency(serviceFee), 0, doc.y, { align: "right" })
+      .text("Total Amount Paid:", 50, doc.y + 5)
       .font("Helvetica-Bold")
-      .text(`Total Amount Paid:`, 50)
-      .text(`মোট পরিশোধিত অর্থঃ`, 50, doc.y + 15)
-      .text(formatCurrency(total), 0, doc.y - 15, { align: "right" })
-      .font("Helvetica")
-      .moveDown(2);
+      .text(formatCurrency(total), 0, doc.y + 5, { align: "right" });
 
-    // 📦 QR Code
-    const qrContent = `BanglaBnB Invoice\nBooking ID: ${booking._id}\nGuest: ${
-      guest.name
-    }\nTotal: ${formatCurrency(total)}`;
-    const qrDataURL = await QRCode.toDataURL(qrContent);
+    // ✅ Invoice number and date
+    doc.moveDown(2);
+    doc.font("Helvetica").fontSize(11).fillColor("gray");
+    doc.text(`Invoice Number: INV-${booking._id}`);
+    doc.text(`Issued on: ${new Date().toLocaleDateString()}`);
 
-    const qrImgPath = path.join(invoiceDir, `qr-${booking._id}.png`);
-    const base64Data = qrDataURL.replace(/^data:image\/png;base64,/, "");
-    fs.writeFileSync(qrImgPath, base64Data, "base64");
+    // ✅ Generate QR code
+    const qrPath = path.join(invoiceDir, `qr-${booking._id}.png`);
+    await QRCode.toFile(
+      qrPath,
+      `https://banglabnb.com/bookings/${booking._id}`,
+      { width: 100 }
+    );
+    doc.image(qrPath, 450, doc.y - 40, { width: 80 });
 
-    doc.image(qrImgPath, 400, doc.y, { fit: [120, 120] }).moveDown(2);
-
+    // ✅ Footer
+    doc.moveDown(4);
     doc
       .fontSize(10)
       .fillColor("gray")
@@ -123,25 +127,19 @@ const generateInvoice = async (booking, listing, guest) => {
 
     doc.end();
 
-    // Wait for PDF stream
     stream.on("finish", async () => {
-      // ☁️ Upload to Cloudinary
       try {
         const result = await cloudinary.uploader.upload(filePath, {
           folder: "banglabnb/invoices",
-          resource_type: "raw", // for PDF
-        });
-        resolve(result.secure_url);
-        fs.unlink(filePath, (err) => {
-          if (err) console.warn("⚠️ Could not delete local PDF:", err);
+          resource_type: "raw",
         });
 
-        fs.unlink(qrImgPath, (err) => {
-          if (err) console.warn("⚠️ Could not delete QR image:", err);
-        });
-      } catch (uploadErr) {
-        console.error("❌ Cloudinary Upload Failed:", uploadErr);
-        reject(uploadErr);
+        fs.unlink(filePath, () => {});
+        fs.unlink(qrPath, () => {});
+
+        resolve(result.secure_url); // ✅ return Cloudinary URL
+      } catch (err) {
+        reject(err);
       }
     });
 
