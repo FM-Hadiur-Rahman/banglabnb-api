@@ -99,19 +99,19 @@ router.post("/success", async (req, res) => {
     const to = new Date(booking.dateTo).toLocaleDateString();
 
     // 🧾 Generate Invoice
-    const invoicePath = await generateInvoice(booking, listing, guest); // 🧾 Utility function
+    const invoiceUrl = await generateInvoice(booking, listing, guest);
+    booking.invoiceUrl = invoiceUrl;
+    await booking.save();
 
     // 📧 Guest email
     await sendEmail({
       to: guest.email,
-      subject: "✅ Your BanglaBnB Booking is Confirmed!",
+      subject: "📄 Your Booking Invoice - BanglaBnB",
       html: `
-        <h2>Hi ${guest.name},</h2>
-        <p>Your payment for <strong>${listing.title}</strong> was successful.</p>
-        <p>📍 Location: ${listing.location?.address}</p>
-        <p>📅 Dates: ${from} → ${to}</p>
-        <p>Thank you for using BanglaBnB!</p>
-      `,
+    <p>Hi ${guest.name},</p>
+    <p>Thanks for booking with BanglaBnB!</p>
+    <p>🔗 <a href="${invoiceUrl}" target="_blank">Click here to view your invoice</a></p>
+  `,
     });
 
     // 📧 Host email
