@@ -134,10 +134,20 @@ const generateInvoice = async (booking, listing, guest) => {
           resource_type: "raw",
         });
 
+        // ✅ Generate downloadable URL
+        const invoicePublicId = result.public_id;
+        const downloadUrl = cloudinary.url(invoicePublicId, {
+          resource_type: "raw",
+          type: "upload",
+          secure: true,
+          flags: "attachment:invoice.pdf", // forces download
+        });
+
+        // ✅ Cleanup local files
         fs.unlink(filePath, () => {});
         fs.unlink(qrPath, () => {});
 
-        resolve(result.secure_url); // ✅ return Cloudinary URL
+        resolve(downloadUrl); // ✅ Return this URL for DB and email
       } catch (err) {
         reject(err);
       }
