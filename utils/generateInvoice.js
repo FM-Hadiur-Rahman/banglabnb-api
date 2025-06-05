@@ -83,7 +83,7 @@ const generateInvoice = async (booking, listing, guest) => {
       .font("Helvetica-Bold")
       .fontSize(13)
       .fillColor("black")
-      .text("💵 Payment Summary", { underline: true });
+      .text(" Payment Summary", { underline: true });
     doc.font("Helvetica").fontSize(12);
     const left = 60;
     const right = 500;
