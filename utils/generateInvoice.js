@@ -49,7 +49,7 @@ const generateInvoice = async (booking, listing, guest) => {
     const serviceFee = 100;
     const total = baseRate * nights + serviceFee;
 
-    const formatCurrency = (value) => `৳${value.toFixed(2)}`;
+    const formatCurrency = (value) => `BDT${value.toFixed(2)}`;
 
     doc
       .moveDown()
@@ -82,22 +82,32 @@ const generateInvoice = async (booking, listing, guest) => {
       )
       .moveDown();
 
-    // Price Breakdown
+    // 💵 Price Breakdown (aligned like columns)
+    const labelX = 50;
+    const valueX = 450;
     doc
       .font("Helvetica")
       .fillColor("black")
       .fontSize(13)
-      .text("💵 Price Breakdown", { underline: true });
+      .text("💵 Price Breakdown", labelX, doc.y, { underline: true });
 
     doc
       .fontSize(12)
-      .text(`Nightly Rate (৳${baseRate} x ${nights} nights):`, 50)
-      .text(formatCurrency(baseRate * nights), 0, doc.y, { align: "right" })
-      .text("Service Fee:", 50)
-      .text(formatCurrency(serviceFee), 0, doc.y, { align: "right" })
-      .text("Total Amount Paid:", 50, doc.y + 5)
+      .text(
+        `Nightly Rate (BDT${baseRate} x ${nights} nights):`,
+        labelX,
+        doc.y + 10
+      )
+      .text(formatCurrency(baseRate * nights), valueX, doc.y);
+
+    doc
+      .text("Service Fee:", labelX, doc.y + 10)
+      .text(formatCurrency(serviceFee), valueX, doc.y);
+
+    doc
       .font("Helvetica-Bold")
-      .text(formatCurrency(total), 0, doc.y + 5, { align: "right" });
+      .text("Total Amount Paid:", labelX, doc.y + 10)
+      .text(formatCurrency(total), valueX, doc.y);
 
     // Invoice Number & Date
     doc.moveDown(2).font("Helvetica").fontSize(11).fillColor("gray");
@@ -124,7 +134,6 @@ const generateInvoice = async (booking, listing, guest) => {
     doc.end();
 
     stream.on("finish", () => {
-      // ✅ Return local file path for attachment
       resolve(filePath);
       fs.unlink(qrPath, () => {});
     });

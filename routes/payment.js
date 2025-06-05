@@ -163,6 +163,10 @@ router.post("/success", async (req, res) => {
       message: `🎉 Payment received for booking at ${listing.title}`,
       type: "payment",
     });
+    // 🧹 Clean up local invoice file
+    fs.unlink(invoicePath, (err) => {
+      if (err) console.warn("⚠️ Could not delete invoice:", err);
+    });
 
     // ✅ Redirect
     res.redirect("https://banglabnb.com/payment-success?status=paid");
