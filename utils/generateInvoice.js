@@ -1,60 +1,74 @@
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
+const { cloudinary } = require("../config/cloudinary");
 
 const generateInvoice = async (booking, listing, guest) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const invoiceDir = path.join(__dirname, "../invoices");
     if (!fs.existsSync(invoiceDir))
       fs.mkdirSync(invoiceDir, { recursive: true });
 
-    const filePath = path.join(invoiceDir, `invoice-${booking._id}.pdf`);
+    const fileName = `invoice-${booking._id}.pdf`;
+    const filePath = path.join(invoiceDir, fileName);
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // 🖼 Add Logo (make sure this path is correct)
+    // 🖼 Add Logo
     const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 45, { width: 100 });
+      doc.image(logoPath, 50, 45, { width: 120 });
     }
 
-    // Header Text
+    // 🟢 Invoice Header with BD Flag Colors
     doc
-      .fillColor("#006a4e") // Green from BD flag
-      .fontSize(24)
-      .text("BanglaBnB", 160, 50, { align: "right" });
-
-    doc
+      .fillColor("#006a4e") // dark green
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .text("BanglaBnB", 200, 50, { align: "right" })
       .fontSize(14)
-      .fillColor("#f42a41") // Red from BD flag
-      .text("📄 Booking Invoice", { align: "right" });
+      .fillColor("#e62e04") // red
+      .text("📄 Booking Invoice / বুকিং চালান", { align: "right" })
+      .moveDown();
 
     doc.moveDown(1);
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
 
-    // Booking Info
+    // 🔢 Invoice Info
     doc
-      .font("Helvetica")
-      .fillColor("black")
       .fontSize(12)
-      .moveDown()
-      .text(`📌 Booking ID: ${booking._id}`)
-      .text(`👤 Guest: ${guest.name} (${guest.email})`)
-      .text(`🏠 Listing: ${listing.title}`)
-      .text(`📍 Location: ${listing.location?.address}`)
+      .fillColor("black")
+      .text(`Invoice #: ${booking._id}`)
+      .text(`চালান নম্বরঃ ${booking._id}`)
+      .text(`Status: ${booking.paymentStatus || "unpaid"}`)
       .text(
-        `📅 Dates: ${new Date(
-          booking.dateFrom
-        ).toLocaleDateString()} → ${new Date(
+        `অবস্থা: ${booking.paymentStatus === "paid" ? "পরিশোধিত" : "অপরিশোধিত"}`
+      )
+      .moveDown();
+
+    // 👤 Guest Info
+    doc
+      .text(`Guest: ${guest.name} (${guest.email})`)
+      .text(`অতিথিঃ ${guest.name}`)
+      .text(`Listing: ${listing.title}`)
+      .text(`স্থানঃ ${listing.location?.address}`)
+      .text(
+        `Dates: ${new Date(booking.dateFrom).toLocaleDateString()} → ${new Date(
           booking.dateTo
         ).toLocaleDateString()}`
-      );
+      )
+      .text(
+        `তারিখঃ ${new Date(booking.dateFrom).toLocaleDateString(
+          "bn-BD"
+        )} → ${new Date(booking.dateTo).toLocaleDateString("bn-BD")}`
+      )
+      .moveDown();
 
-    doc.moveDown(1);
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
 
-    // 💵 Price Breakdown
+    // 💵 Pricing Summary
     const nights =
       (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
       (1000 * 60 * 60 * 24);
@@ -62,27 +76,44 @@ const generateInvoice = async (booking, listing, guest) => {
     const serviceFee = 100;
     const total = baseRate * nights + serviceFee;
 
-    const formatCurrency = (val) => `৳${val.toFixed(2)}`;
-
     doc
       .moveDown(1)
       .fontSize(13)
-      .fillColor("#006a4e")
-      .text("💵 Price Breakdown", { underline: true });
+      .text("💵 Price Breakdown / মূল্য বিবরণী", { underline: true });
+
+    const formatCurrency = (val) => `৳${val.toFixed(2)}`;
 
     doc
       .fontSize(12)
-      .fillColor("black")
       .text(`Nightly Rate (৳${baseRate} x ${nights} nights):`, 50)
-      .text(formatCurrency(baseRate * nights), { align: "right" })
-      .text("Service Fee:", 50)
-      .text(formatCurrency(serviceFee), { align: "right" })
+      .text(`প্রতি রাতের দাম (${nights} রাত):`, 50, doc.y + 15)
+      .text(formatCurrency(baseRate * nights), 0, doc.y - 15, {
+        align: "right",
+      })
+      .moveDown(1)
+      .text(`Service Fee:`, 50)
+      .text(`সার্ভিস ফি:`, 50, doc.y + 15)
+      .text(formatCurrency(serviceFee), 0, doc.y - 15, { align: "right" })
+      .moveDown(1)
       .font("Helvetica-Bold")
-      .text("Total:", 50)
-      .text(formatCurrency(total), { align: "right" });
+      .text(`Total Amount Paid:`, 50)
+      .text(`মোট পরিশোধিত অর্থঃ`, 50, doc.y + 15)
+      .text(formatCurrency(total), 0, doc.y - 15, { align: "right" })
+      .font("Helvetica")
+      .moveDown(2);
 
-    // Footer
-    doc.moveDown(2);
+    // 📦 QR Code
+    const qrContent = `BanglaBnB Invoice\nBooking ID: ${booking._id}\nGuest: ${
+      guest.name
+    }\nTotal: ${formatCurrency(total)}`;
+    const qrDataURL = await QRCode.toDataURL(qrContent);
+
+    const qrImgPath = path.join(invoiceDir, `qr-${booking._id}.png`);
+    const base64Data = qrDataURL.replace(/^data:image\/png;base64,/, "");
+    fs.writeFileSync(qrImgPath, base64Data, "base64");
+
+    doc.image(qrImgPath, 400, doc.y, { fit: [120, 120] }).moveDown(2);
+
     doc
       .fontSize(10)
       .fillColor("gray")
@@ -91,7 +122,29 @@ const generateInvoice = async (booking, listing, guest) => {
       });
 
     doc.end();
-    stream.on("finish", () => resolve(filePath));
+
+    // Wait for PDF stream
+    stream.on("finish", async () => {
+      // ☁️ Upload to Cloudinary
+      try {
+        const result = await cloudinary.uploader.upload(filePath, {
+          folder: "banglabnb/invoices",
+          resource_type: "raw", // for PDF
+        });
+        resolve(result.secure_url);
+        fs.unlink(filePath, (err) => {
+          if (err) console.warn("⚠️ Could not delete local PDF:", err);
+        });
+
+        fs.unlink(qrImgPath, (err) => {
+          if (err) console.warn("⚠️ Could not delete QR image:", err);
+        });
+      } catch (uploadErr) {
+        console.error("❌ Cloudinary Upload Failed:", uploadErr);
+        reject(uploadErr);
+      }
+    });
+
     stream.on("error", reject);
   });
 };
