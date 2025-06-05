@@ -49,7 +49,7 @@ const generateInvoice = async (booking, listing, guest) => {
     const baseRate = listing.price;
     const baseTotal = baseRate * nights;
     const serviceFee = baseTotal * 0.1;
-    const tax = (baseTotal + serviceFee) * 0.1;
+    const tax = (baseTotal + serviceFee) * 0.15;
     const total = baseTotal + serviceFee + tax;
 
     const formatCurrency = (val) => `BDT ${val.toFixed(2)}`;
@@ -117,7 +117,7 @@ const generateInvoice = async (booking, listing, guest) => {
     doc.text(formatCurrency(serviceFee), 450, y, { align: "right" });
     y += 20;
 
-    doc.text("VAT (10%):", 60, y);
+    doc.text("VAT (15%):", 60, y);
     doc.text(formatCurrency(tax), 450, y, { align: "right" });
     y += 20;
 
