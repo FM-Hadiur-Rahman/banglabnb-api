@@ -106,11 +106,45 @@ router.post("/success", async (req, res) => {
     // 📧 Guest email
     await sendEmail({
       to: guest.email,
-      subject: "📄 Your Booking Invoice - BanglaBnB",
+      subject: "📄 Your BanglaBnB Invoice is Ready!",
       html: `
-    <p>Hi ${guest.name},</p>
-    <p>Thanks for booking with BanglaBnB!</p>
-    <p>🔗 <a href="${invoiceUrl}" target="_blank">Click here to view your invoice</a></p>
+    <div style="font-family: Arial, sans-serif; color: #1a202c; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 8px;">
+      <h2 style="color: #10b981; text-align: center;">🧾 BanglaBnB Booking Invoice</h2>
+
+      <p>Dear <strong>${guest.name}</strong>,</p>
+      <p>Thank you for your booking with <strong>BanglaBnB</strong>! Your payment has been successfully processed.</p>
+
+      <hr style="margin: 20px 0;" />
+
+      <h3>🛏️ Listing Details</h3>
+      <p><strong>${listing.title}</strong></p>
+      <p>📍 ${listing.location?.address}</p>
+      <p>📅 <strong>${new Date(
+        booking.dateFrom
+      ).toLocaleDateString()} → ${new Date(
+        booking.dateTo
+      ).toLocaleDateString()}</strong></p>
+
+      <h3>💵 Payment Summary</h3>
+      <p>Total Paid: <strong>৳${booking.paidAmount}</strong></p>
+      <p>Status: ✅ Paid</p>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="${invoiceUrl}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+          📥 View Invoice PDF
+        </a>
+      </div>
+
+      <hr style="margin: 20px 0;" />
+
+      <p style="font-size: 14px; color: #4a5568;">
+        আপনার বুকিং ইনভয়েস তৈরি হয়েছে। উপরের বাটনে ক্লিক করে এটি ডাউনলোড করতে পারেন।
+      </p>
+
+      <p style="font-size: 13px; color: #718096;">If you have any questions, reply to this email or contact us at support@banglabnb.com</p>
+      
+      <p style="text-align: center; font-size: 12px; margin-top: 24px; color: #a0aec0;">© ${new Date().getFullYear()} BanglaBnB, Bangladesh</p>
+    </div>
   `,
     });
 
@@ -118,28 +152,53 @@ router.post("/success", async (req, res) => {
     if (listing.hostId?.email) {
       await sendEmail({
         to: listing.hostId.email,
-        subject: "📢 New Paid Booking on BanglaBnB!",
+        subject: "📢 New Paid Booking on Your Listing!",
         html: `
-          <h2>Hello ${listing.hostId.name},</h2>
-          <p>${guest.name} has paid and confirmed a booking for your listing: <strong>${listing.title}</strong></p>
-          <p>📍 Location: ${listing.location?.address}</p>
-          <p>📅 Dates: ${from} → ${to}</p>
-        `,
+      <div style="font-family: Arial, sans-serif; color: #1a202c; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 8px;">
+        <h2 style="color: #2563eb; text-align: center;">📢 New Booking Received!</h2>
+
+        <p>Dear <strong>${listing.hostId.name}</strong>,</p>
+        <p>🎉 Great news! A guest has completed payment and confirmed a booking on your listing:</p>
+
+        <hr style="margin: 20px 0;" />
+
+        <h3>🏡 Listing Information</h3>
+        <p><strong>${listing.title}</strong></p>
+        <p>📍 ${listing.location?.address}</p>
+
+        <h3>📅 Booking Details</h3>
+        <p>
+          <strong>${from} → ${to}</strong><br/>
+          Nights: ${Math.ceil(
+            (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
+              (1000 * 60 * 60 * 24)
+          )}<br/>
+          Guest: ${guest.name} (${guest.email})
+        </p>
+
+        <h3>💵 Payment</h3>
+        <p>Amount Paid: <strong>৳${
+          booking.paidAmount
+        }</strong><br/>Status: ✅ Paid</p>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="${invoiceUrl}" target="_blank" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            📄 View Booking Invoice
+          </a>
+        </div>
+
+        <hr style="margin: 24px 0;" />
+
+        <p style="font-size: 14px; color: #4a5568;">
+          আপনার লিস্টিং-এ নতুন বুকিং এসেছে। উপরের বাটনে ক্লিক করে ইনভয়েস দেখতে পারেন।
+        </p>
+
+        <p style="font-size: 13px; color: #718096;">Have questions? Contact us anytime at support@banglabnb.com</p>
+        <p style="text-align: center; font-size: 12px; margin-top: 24px; color: #a0aec0;">© ${new Date().getFullYear()} BanglaBnB, Bangladesh</p>
+      </div>
+    `,
       });
     }
-
-    // 📧 Invoice Email
-    await sendEmail({
-      to: guest.email,
-      subject: "📄 Your Booking Invoice - BanglaBnB",
-      html: `<p>Hi ${guest.name}, please find your booking invoice attached.</p>`,
-      attachments: [
-        {
-          filename: `invoice-${booking._id}.pdf`,
-          path: invoicePath,
-        },
-      ],
-    });
 
     // 🔔 In-app Notification
     await Notification.create({
