@@ -1,4 +1,4 @@
-export const divisions = {
+const divisions = {
   Dhaka: [
     "Dhaka",
     "Gazipur",
@@ -70,3 +70,4 @@ export const divisions = {
     "Thakurgaon",
   ],
 };
+module.exports = { divisions };
