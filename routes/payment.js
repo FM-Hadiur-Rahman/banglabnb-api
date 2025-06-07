@@ -12,6 +12,7 @@ const generateInvoice = require("../utils/generateInvoice");
 const path = require("path");
 const Notification = require("../models/Notification");
 const fs = require("fs");
+const jwt = require("jsonwebtoken");
 
 router.post("/initiate", async (req, res) => {
   const { amount, bookingId, customer } = req.body;
@@ -166,6 +167,10 @@ router.post("/success", async (req, res) => {
     // 🧹 Clean up local invoice file
     fs.unlink(invoicePath, (err) => {
       if (err) console.warn("⚠️ Could not delete invoice:", err);
+    });
+
+    const token = jwt.sign({ id: guest._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
     });
 
     //for chat between host and guest
