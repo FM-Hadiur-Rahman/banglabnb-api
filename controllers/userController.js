@@ -19,18 +19,18 @@ exports.updateCurrentUser = async (req, res) => {
       new: true,
     }).select("-password");
 
-    let token;
     // Only regenerate token if sensitive fields changed
     const sensitiveFields = ["email", "password", "role"];
     const hasSensitiveChange = sensitiveFields.some(
       (key) => updates[key] && updates[key] !== userBefore[key]
     );
 
+    let token;
     if (hasSensitiveChange) {
-      token = generateToken(user); // only generate if needed
+      token = generateToken(user);
     }
 
-    res.json({ user, token }); // token is undefined if no sensitive change
+    res.json({ user, token }); // token is optional
   } catch (err) {
     console.error("❌ Failed to update user:", err);
     res.status(500).json({ error: "Failed to update profile." });
