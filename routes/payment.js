@@ -93,22 +93,58 @@ router.post("/success", async (req, res) => {
     try {
       await sendEmail({
         to: guest.email,
-        subject: "Your Invoice",
+        subject: "📄 Your BanglaBnB Invoice is Ready!",
+        html: `
+        <div style="font-family: Arial, sans-serif; color: #1a202c; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 8px;">
+          <h2 style="color: #10b981; text-align: center;">🧾 BanglaBnB Booking Invoice</h2>
+          <p>Dear <strong>${guest.name}</strong>,</p>
+          <p>Thank you for your booking with <strong>BanglaBnB</strong>! Your payment has been successfully processed.</p>
+          <hr style="margin: 20px 0;" />
+          <h3>🛏️ Listing Details</h3>
+          <p><strong>${listing.title}</strong></p>
+          <p>📍 ${listing.location?.address}</p>
+          <p>📅 <strong>${from} → ${to}</strong></p>
+          <h3>💵 Payment Summary</h3>
+          <p>Total Paid: <strong>৳${booking.paidAmount}</strong></p>
+          <p>Status: ✅ Paid</p>
+          <p style="font-size: 14px; color: #4a5568;">আপনার বুকিং ইনভয়েস তৈরি হয়েছে। এটি মেইলে সংযুক্ত রয়েছে।</p>
+        </div>
+      `,
         attachments: [
-          { filename: `invoice-${booking._id}.pdf`, path: invoicePath },
+          {
+            filename: `invoice-${booking._id}.pdf`,
+            path: invoicePath,
+            contentType: "application/pdf",
+          },
         ],
       });
     } catch (e) {
       console.warn("Guest email failed:", e.message);
     }
-
+    // 📧 Host email with same attachment
     if (listing.hostId?.email) {
       try {
         await sendEmail({
           to: listing.hostId.email,
-          subject: "New Paid Booking",
+          subject: "📢 New Paid Booking on Your Listing!",
+          html: `
+        <div style="font-family: Arial, sans-serif; color: #1a202c; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 8px;">
+          <h2 style="color: #2563eb; text-align: center;">📢 New Booking Received!</h2>
+          <p>Dear <strong>${listing.hostId.name}</strong>,</p>
+          <p>🎉 A guest has paid and confirmed a booking on your listing <strong>${listing.title}</strong>.</p>
+          <p>📍 ${listing.location?.address}</p>
+          <p>📅 ${from} → ${to}</p>
+          <p>👤 ${guest.name} (${guest.email})</p>
+          <p>💵 ৳${booking.paidAmount} — Paid</p>
+          <p style="font-size: 14px; color: #4a5568;">ইনভয়েস মেইলের সাথে সংযুক্ত রয়েছে।</p>
+        </div>
+      `,
           attachments: [
-            { filename: `invoice-${booking._id}.pdf`, path: invoicePath },
+            {
+              filename: `invoice-${booking._id}.pdf`,
+              path: invoicePath,
+              contentType: "application/pdf",
+            },
           ],
         });
       } catch (e) {
