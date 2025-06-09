@@ -73,7 +73,8 @@ exports.getListingsByHost = async (req, res) => {
 
 exports.createListing = async (req, res) => {
   try {
-    const imageUrls = (req.files || []).map((file) => file.path);
+    const imageFiles = req.files?.images || []; // For multer.fields
+    const imageUrls = imageFiles.map((file) => file.path);
 
     const location = JSON.parse(req.body.location);
 
