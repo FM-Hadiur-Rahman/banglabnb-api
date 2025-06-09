@@ -72,6 +72,11 @@ exports.getListingsByHost = async (req, res) => {
 // };
 
 exports.createListing = async (req, res) => {
+  console.log("🧾 Request received at /api/listings");
+  console.log("➡️ req.body:", req.body);
+  console.log("➡️ req.files:", req.files);
+  console.log("➡️ req.user:", req.user);
+
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No images uploaded" });
