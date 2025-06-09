@@ -316,7 +316,11 @@ router.post("/success", async (req, res) => {
   try {
     const booking = await Booking.findOne({ transactionId: tran_id })
       .populate("guestId")
-      .populate("listingId");
+      .populate({
+        path: "listingId",
+        populate: { path: "hostId" }, // ✅ populate the host data
+      });
+
     if (!booking) return res.status(404).send("Booking not found");
 
     booking.paymentStatus = "paid";
