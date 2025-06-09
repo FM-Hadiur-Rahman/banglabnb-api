@@ -1,3 +1,4 @@
+// === Imports ===
 const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/protect"); // ✅ Correct path
@@ -9,14 +10,22 @@ const sendEmail = require("../utils/sendEmail"); // make sure you have this
 const Payout = require("../models/Payout"); // 👈 import the model
 
 // Example admin-only route
-router.get("/stats", protect, authorize("admin"), async (req, res) => {
-  const users = await User.countDocuments();
-  const listings = await Listing.countDocuments();
-  const bookings = await Booking.countDocuments();
+const Review = require("../models/Review");
+router.get(
+  "/flagged/reviews",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    const flagged = await Review.find({ flagged: true })
+      .populate("userId")
+      .populate("listingId");
+    res.json(flagged);
+  }
+);
 
-  res.json({ users, listings, bookings });
-});
-// Get all users (Admin only)
+// Flagged users
+
+// === User Management ===
 router.get("/users", protect, authorize("admin"), async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -27,6 +36,31 @@ router.get("/users", protect, authorize("admin"), async (req, res) => {
   }
 });
 // Get all listings (Admin only)
+router.put("/users/:id/role", protect, authorize("admin"), async (req, res) => {
+  const { role } = req.body;
+  if (!["user", "host", "admin"].includes(role)) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.params.id,
+    { role },
+    { new: true }
+  );
+  res.json({ message: `User role updated to ${role}`, user });
+});
+
+router.get("/user-breakdown", protect, authorize("admin"), async (req, res) => {
+  const total = await User.countDocuments();
+  const guests = await User.countDocuments({ role: "guest" });
+  const hosts = await User.countDocuments({ role: "host" });
+
+  res.json({ total, guests, hosts });
+});
+
+// Get users with pending KYC
+
+// === Listing Management ===
 router.get("/listings", protect, authorize("admin"), async (req, res) => {
   try {
     const listings = await Listing.find().populate("hostId", "name email");
@@ -37,6 +71,8 @@ router.get("/listings", protect, authorize("admin"), async (req, res) => {
   }
 });
 // Get all bookings (Admin only)
+
+// === Booking Management ===
 router.get("/bookings", protect, authorize("admin"), async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -49,27 +85,8 @@ router.get("/bookings", protect, authorize("admin"), async (req, res) => {
   }
 });
 // Add to admin routes (/routes/admin.js)
-router.get("/stats", protect, authorize("admin"), async (req, res) => {
-  const totalUsers = await User.countDocuments();
-  const guests = await User.countDocuments({ role: "user" });
-  const hosts = await User.countDocuments({ role: "host" });
-  const totalListings = await Listing.countDocuments();
-  const totalBookings = await Booking.countDocuments({ paymentStatus: "paid" });
 
-  const revenue = await Booking.aggregate([
-    { $match: { paymentStatus: "paid" } },
-    { $group: { _id: null, total: { $sum: "$paidAmount" } } },
-  ]);
-
-  res.json({
-    users: totalUsers,
-    guests,
-    hosts,
-    listings: totalListings,
-    bookings: totalBookings,
-    revenue: revenue[0]?.total || 0,
-  });
-});
+// === KYC Management ===
 router.get("/kyc", protect, authorize("admin"), async (req, res) => {
   const pending = await User.find({ kycStatus: "pending" });
   const approved = await User.find({ kycStatus: "approved" });
@@ -142,47 +159,6 @@ router.get(
 );
 
 // Flagged reviews
-const Review = require("../models/Review");
-router.get(
-  "/flagged/reviews",
-  protect,
-  authorize("admin"),
-  async (req, res) => {
-    const flagged = await Review.find({ flagged: true })
-      .populate("userId")
-      .populate("listingId");
-    res.json(flagged);
-  }
-);
-
-// Flagged users
-router.get("/flagged/users", protect, authorize("admin"), async (req, res) => {
-  const flagged = await User.find({ flagged: true });
-  res.json(flagged);
-});
-router.put("/users/:id/role", protect, authorize("admin"), async (req, res) => {
-  const { role } = req.body;
-  if (!["user", "host", "admin"].includes(role)) {
-    return res.status(400).json({ message: "Invalid role" });
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    { role },
-    { new: true }
-  );
-  res.json({ message: `User role updated to ${role}`, user });
-});
-
-router.get("/user-breakdown", protect, authorize("admin"), async (req, res) => {
-  const total = await User.countDocuments();
-  const guests = await User.countDocuments({ role: "guest" });
-  const hosts = await User.countDocuments({ role: "host" });
-
-  res.json({ total, guests, hosts });
-});
-
-// Get users with pending KYC
 router.get("/kyc/pending", protect, authorize("admin"), async (req, res) => {
   const users = await User.find({ "kyc.status": "pending" });
   res.json(users);
@@ -202,6 +178,12 @@ router.patch("/kyc/:userId", protect, authorize("admin"), async (req, res) => {
   res.json({ message: `User KYC marked as ${status}` });
 });
 // GET: fetch all flagged reviews, listings, and users
+
+// === Flagged Content ===
+router.get("/flagged/users", protect, authorize("admin"), async (req, res) => {
+  const flagged = await User.find({ flagged: true });
+  res.json(flagged);
+});
 router.get("/flagged", protect, authorize("admin"), async (req, res) => {
   const users = await User.find({ flagged: true }).select("name email role");
   const listings = await Listing.find({ flagged: true }).populate(
@@ -235,6 +217,10 @@ router.put(
   }
 );
 // Revenue analytics route
+
+// === Role Management ===
+
+// === Revenue Analytics ===
 router.get("/revenue", protect, authorize("admin"), async (req, res) => {
   try {
     const bookings = await Booking.find({ paymentStatus: "paid" }).populate({
@@ -355,3 +341,38 @@ router.put(
 );
 
 module.exports = router;
+
+// === Payout Management ===
+
+// === Miscellaneous Stats ===
+router.get("/stats", protect, authorize("admin"), async (req, res) => {
+  const users = await User.countDocuments();
+  const listings = await Listing.countDocuments();
+  const bookings = await Booking.countDocuments();
+
+  res.json({ users, listings, bookings });
+});
+// Get all users (Admin only)
+router.get("/stats", protect, authorize("admin"), async (req, res) => {
+  const totalUsers = await User.countDocuments();
+  const guests = await User.countDocuments({ role: "user" });
+  const hosts = await User.countDocuments({ role: "host" });
+  const totalListings = await Listing.countDocuments();
+  const totalBookings = await Booking.countDocuments({ paymentStatus: "paid" });
+
+  const revenue = await Booking.aggregate([
+    { $match: { paymentStatus: "paid" } },
+    { $group: { _id: null, total: { $sum: "$paidAmount" } } },
+  ]);
+
+  res.json({
+    users: totalUsers,
+    guests,
+    hosts,
+    listings: totalListings,
+    bookings: totalBookings,
+    revenue: revenue[0]?.total || 0,
+  });
+});
+
+// === Other ===
