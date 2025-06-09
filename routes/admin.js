@@ -88,10 +88,24 @@ router.put(
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    await User.findByIdAndUpdate(id, { kycStatus: status });
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.kycStatus = status;
+
+    if (status === "approved") {
+      user.identityVerified = true;
+    } else if (status === "rejected") {
+      user.identityVerified = false;
+    }
+
+    await user.save();
     res.json({ message: `KYC ${status}` });
   }
 );
+
 // Flagged listings
 router.get(
   "/flagged/listings",
