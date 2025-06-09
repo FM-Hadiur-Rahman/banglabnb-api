@@ -24,7 +24,13 @@ const PORT = process.env.PORT || 5000;
 // Allow requests from localhost and production
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://banglabnb.com"],
+    origin: [
+      "http://localhost:5173",
+      "https://banglabnb.com",
+      "http://localhost:8082", // Expo web
+      "exp://192.168.0.112:8082", // optional: Expo Go app if needed
+    ],
+
     credentials: true,
   })
 );
