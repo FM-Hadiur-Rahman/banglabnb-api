@@ -95,58 +95,6 @@ router.get("/kyc", protect, authorize("admin"), async (req, res) => {
   res.json({ pending, approved, rejected });
 });
 
-router.put(
-  "/kyc/:id/:status",
-  protect,
-  authorize("admin"),
-  async (req, res) => {
-    const { id, status } = req.params;
-    const { reason } = req.body;
-
-    if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.kyc = {
-      status,
-      reason: status === "rejected" ? reason : "",
-      timestamp: new Date(),
-    };
-
-    user.identityVerified = status === "approved";
-
-    await user.save();
-
-    // ✉️ Auto email notification
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: `Your BanglaBnB KYC has been ${status}`,
-        html: `
-          <h2 style="color: ${
-            status === "approved" ? "#10b981" : "#ef4444"
-          };">KYC ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
-          <p>Hello <strong>${user.name}</strong>,</p>
-          <p>Your identity verification request on <strong>BanglaBnB</strong> has been <strong>${status}</strong>.</p>
-          ${
-            status === "rejected"
-              ? `<p><strong>Reason:</strong> ${reason}</p>`
-              : ""
-          }
-          <p>Thank you for your cooperation.</p>
-        `,
-      });
-    } catch (e) {
-      console.warn("Email send failed:", e.message);
-    }
-
-    res.json({ message: `KYC ${status}` });
-  }
-);
-
 // Flagged listings
 router.get(
   "/flagged/listings",
@@ -169,14 +117,49 @@ router.patch("/kyc/:userId", protect, authorize("admin"), async (req, res) => {
   const { userId } = req.params;
   const { status, reason } = req.body;
 
-  const updates = {
-    "kyc.status": status,
-    ...(status === "rejected" && { "kyc.rejectionReason": reason }),
-  };
+  if (!["approved", "rejected"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
 
-  await User.findByIdAndUpdate(userId, updates);
-  res.json({ message: `User KYC marked as ${status}` });
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  user.kyc.status = status;
+  user.kyc.reason = status === "rejected" ? reason || "No reason provided" : "";
+  user.kyc.timestamp = new Date();
+  user.identityVerified = status === "approved";
+
+  await user.save();
+
+  // ✅ Send email notification
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: `Your BanglaBnB KYC has been ${status}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #1a202c; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 8px;">
+          <h2 style="color: ${status === "approved" ? "#10b981" : "#ef4444"};">
+            KYC ${status.charAt(0).toUpperCase() + status.slice(1)}
+          </h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>Your identity verification request on <strong>BanglaBnB</strong> has been <strong>${status}</strong>.</p>
+          ${
+            status === "rejected"
+              ? `<p><strong>Reason:</strong> ${user.kyc.reason}</p>`
+              : ""
+          }
+          <p>If you have any questions, please contact support.</p>
+        </div>
+      `,
+    });
+    console.log("✅ Email sent to", user.email);
+  } catch (err) {
+    console.warn("⚠️ Email send failed:", err.message);
+  }
+
+  res.json({ message: `User KYC ${status}` });
 });
+
 // GET: fetch all flagged reviews, listings, and users
 
 // === Flagged Content ===
