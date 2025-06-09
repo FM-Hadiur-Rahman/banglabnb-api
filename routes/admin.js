@@ -5,7 +5,7 @@ const authorize = require("../middleware/authorize"); // For role check
 const User = require("../models/User");
 const Listing = require("../models/Listing");
 const Booking = require("../models/Booking");
-
+const sendEmail = require("../utils/sendEmail"); // make sure you have this
 const Payout = require("../models/Payout"); // 👈 import the model
 
 // Example admin-only route
@@ -84,24 +84,48 @@ router.put(
   authorize("admin"),
   async (req, res) => {
     const { id, status } = req.params;
+    const { reason } = req.body;
+
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
     const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.kycStatus = status;
+    user.kyc = {
+      status,
+      reason: status === "rejected" ? reason : "",
+      timestamp: new Date(),
+    };
 
-    if (status === "approved") {
-      user.identityVerified = true;
-    } else if (status === "rejected") {
-      user.identityVerified = false;
-    }
+    user.identityVerified = status === "approved";
 
     await user.save();
+
+    // ✉️ Auto email notification
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `Your BanglaBnB KYC has been ${status}`,
+        html: `
+          <h2 style="color: ${
+            status === "approved" ? "#10b981" : "#ef4444"
+          };">KYC ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>Your identity verification request on <strong>BanglaBnB</strong> has been <strong>${status}</strong>.</p>
+          ${
+            status === "rejected"
+              ? `<p><strong>Reason:</strong> ${reason}</p>`
+              : ""
+          }
+          <p>Thank you for your cooperation.</p>
+        `,
+      });
+    } catch (e) {
+      console.warn("Email send failed:", e.message);
+    }
+
     res.json({ message: `KYC ${status}` });
   }
 );
