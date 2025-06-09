@@ -79,7 +79,10 @@ exports.createListing = async (req, res) => {
 
     let location;
     try {
-      location = JSON.parse(req.body.location);
+      location =
+        typeof req.body.location === "string"
+          ? JSON.parse(req.body.location)
+          : req.body.location;
     } catch (err) {
       return res.status(400).json({ message: "Invalid location format" });
     }
