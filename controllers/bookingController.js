@@ -1,5 +1,5 @@
 // 📁 server/controllers/bookingController.js
-//const sendEmail = require("../utils/sendEmail");
+const sendEmail = require("../utils/sendEmail");
 const Booking = require("../models/Booking");
 const Listing = require("../models/Listing");
 const User = require("../models/User");
@@ -180,8 +180,11 @@ exports.cancelBooking = async (req, res) => {
 
 // ✅ Check-in
 exports.checkIn = async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
-  if (!booking || booking.guestId.toString() !== req.user._id.toString())
+  const booking = await Booking.findById(req.params.id)
+    .populate("guestId", "name email")
+    .populate("listingId");
+
+  if (!booking || booking.guestId._id.toString() !== req.user._id.toString())
     return res.status(403).json({ message: "Unauthorized" });
 
   const now = new Date();
@@ -190,13 +193,39 @@ exports.checkIn = async (req, res) => {
 
   booking.checkInAt = now;
   await booking.save();
+
+  // ✅ Fetch host details
+  const host = await User.findById(booking.listingId.hostId).select(
+    "name email"
+  );
+
+  // ✅ Send email to guest
+  await sendEmail({
+    to: booking.guestId.email,
+    subject: "✅ You’ve successfully checked in!",
+    html: `<p>Hi ${booking.guestId.name},</p>
+           <p>You've successfully checked into <strong>${booking.listingId.title}</strong> on BanglaBnB.</p>
+           <p>Enjoy your stay!</p>`,
+  });
+
+  // ✅ Send email to host
+  await sendEmail({
+    to: host.email,
+    subject: "🏠 Guest has checked in",
+    html: `<p>Hi ${host.name},</p>
+           <p>Your guest <strong>${booking.guestId.name}</strong> has checked into <strong>${booking.listingId.title}</strong>.</p>`,
+  });
+
   res.json({ message: "Checked in", booking });
 };
 
 // ✅ Check-out
 exports.checkOut = async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
-  if (!booking || booking.guestId.toString() !== req.user._id.toString())
+  const booking = await Booking.findById(req.params.id)
+    .populate("guestId", "name email")
+    .populate("listingId");
+
+  if (!booking || booking.guestId._id.toString() !== req.user._id.toString())
     return res.status(403).json({ message: "Unauthorized" });
 
   const now = new Date();
@@ -205,5 +234,29 @@ exports.checkOut = async (req, res) => {
 
   booking.checkOutAt = now;
   await booking.save();
+
+  // ✅ Fetch host info
+  const host = await User.findById(booking.listingId.hostId).select(
+    "name email"
+  );
+
+  // ✅ Email to Guest
+  await sendEmail({
+    to: booking.guestId.email,
+    subject: "🏁 You’ve checked out",
+    html: `<p>Hi ${booking.guestId.name},</p>
+           <p>Thanks for staying at <strong>${booking.listingId.title}</strong>.</p>
+           <p>We hope you had a great experience. Don't forget to leave a review!</p>`,
+  });
+
+  // ✅ Email to Host
+  await sendEmail({
+    to: host.email,
+    subject: "📤 Guest checked out",
+    html: `<p>Hi ${host.name},</p>
+           <p>Your guest <strong>${booking.guestId.name}</strong> has checked out from <strong>${booking.listingId.title}</strong>.</p>
+           <p>Consider leaving them a review too!</p>`,
+  });
+
   res.json({ message: "Checked out", booking });
 };
