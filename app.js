@@ -28,8 +28,7 @@ app.use(
       "http://localhost:5173",
       "https://banglabnb.com",
       "http://localhost:8081", // Expo web
-      "http://localhost:8082", // Expo web
-      "exp://192.168.0.112:8082", // optional: Expo Go app if needed
+      "exp://192.168.0.112:8081", // optional: Expo Go app if needed
     ],
 
     credentials: true,

@@ -4,6 +4,7 @@ const upload = require("../middleware/cloudinaryUpload");
 
 const protect = require("../middleware/protect");
 const { switchRole } = require("../controllers/authController");
+const { getUserIdFromToken } = require("../controllers/authController");
 
 const checkSignupStep = require("../middleware/checkSignupStep");
 
@@ -37,5 +38,7 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
 router.patch("/switch-role", protect, switchRole);
+
+router.get("/verify-token", getUserIdFromToken);
 
 module.exports = router;

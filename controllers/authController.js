@@ -238,3 +238,15 @@ exports.switchRole = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
+exports.getUserIdFromToken = async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ message: "Token is required" });
+
+  const hashed = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({ verificationToken: hashed });
+
+  if (!user)
+    return res.status(404).json({ message: "Invalid or expired token" });
+
+  return res.status(200).json({ userId: user._id });
+};
