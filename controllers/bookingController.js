@@ -181,7 +181,7 @@ exports.cancelBooking = async (req, res) => {
 // ✅ Check-in
 exports.checkIn = async (req, res) => {
   const booking = await Booking.findById(req.params.id);
-  if (!booking || booking.guestId.toString() !== req.user._id)
+  if (!booking || booking.guestId.toString() !== req.user._id.toString())
     return res.status(403).json({ message: "Unauthorized" });
 
   const now = new Date();
@@ -196,7 +196,7 @@ exports.checkIn = async (req, res) => {
 // ✅ Check-out
 exports.checkOut = async (req, res) => {
   const booking = await Booking.findById(req.params.id);
-  if (!booking || booking.guestId.toString() !== req.user._id)
+  if (!booking || booking.guestId.toString() !== req.user._id.toString())
     return res.status(403).json({ message: "Unauthorized" });
 
   const now = new Date();
