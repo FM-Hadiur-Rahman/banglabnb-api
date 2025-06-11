@@ -322,14 +322,15 @@ exports.requestModification = async (req, res) => {
 
   if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-  // 🔐 Allow only confirmed + paid bookings before check-in
+  // 🔐 Allow only confirmed + paid + not checked-in
   if (
     booking.status !== "confirmed" ||
-    booking.paymentStatus !== "paid" ||
+    !["paid", "partial"].includes(booking.paymentStatus) ||
     booking.checkInAt
   ) {
     return res.status(400).json({
-      message: "Only paid, confirmed, unchecked-in bookings can be modified",
+      message:
+        "Only paid, confirmed, and unchecked-in bookings can be modified",
     });
   }
 
@@ -338,7 +339,7 @@ exports.requestModification = async (req, res) => {
     return res.status(400).json({ message: "Invalid modification date range" });
   }
 
-  // ✅ Check for booking conflicts
+  // ✅ Conflict check
   const conflict = await Booking.findOne({
     _id: { $ne: booking._id },
     listingId: booking.listingId,
@@ -354,7 +355,7 @@ exports.requestModification = async (req, res) => {
       .json({ message: "New dates overlap with another booking" });
   }
 
-  // ✅ Save request
+  // 💾 Save modification request
   booking.modificationRequest = {
     status: "requested",
     requestedDates: { from, to },
@@ -378,7 +379,7 @@ exports.respondModification = async (req, res) => {
   if (action === "accepted") {
     const { from, to } = booking.modificationRequest.requestedDates;
 
-    // 🛡 Conflict check again for safety
+    // 🛡 Double-check conflicts
     const conflict = await Booking.findOne({
       _id: { $ne: booking._id },
       listingId: booking.listingId,
@@ -397,23 +398,31 @@ exports.respondModification = async (req, res) => {
     // ✅ Apply changes
     booking.dateFrom = from;
     booking.dateTo = to;
+
+    // 🧮 Calculate new total
+    const nights = (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24);
+    const newTotal = nights * booking.listingId.price;
+
+    if (booking.paidAmount && booking.paidAmount < newTotal) {
+      // Mark for future payment
+      booking.paymentStatus = "partial";
+    }
   }
 
   booking.modificationRequest.status = action;
   await booking.save();
 
+  // 📧 Email guest
   const guest = booking.guestId;
   const nights =
     (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
     (1000 * 60 * 60 * 24);
-  const price = booking.listingId.price;
-  const total = nights * price;
+  const total = nights * booking.listingId.price;
 
-  // ✅ Notify guest via email
   try {
     await sendEmail({
       to: guest.email,
-      subject: `📅 Your booking modification was ${action}`,
+      subject: `📅 Booking modification ${action}`,
       html: `
         <div style="font-family:sans-serif;">
           <h2>Your booking change was <strong style="color:${
@@ -428,9 +437,13 @@ exports.respondModification = async (req, res) => {
                   booking.dateTo
                 ).toLocaleDateString()}</p>
                  <p><strong>New Total (Est.):</strong> ৳${total.toFixed(2)}</p>`
-              : `<p>The host was unable to accommodate your requested dates.</p>`
+              : `<p>Host could not accommodate your requested dates.</p>`
           }
-          <p>Thank you for using BanglaBnB.</p>
+          ${
+            booking.paymentStatus === "partial"
+              ? `<p style="color:#d97706;"><strong>🧾 Payment due:</strong> Additional payment required for extended stay.</p>`
+              : ""
+          }
         </div>
       `,
     });
