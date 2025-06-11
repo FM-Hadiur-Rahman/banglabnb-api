@@ -365,9 +365,6 @@ exports.requestModification = async (req, res) => {
   res.json({ message: "Modification request sent", booking });
 };
 
-const sendEmail = require("../utils/sendEmail");
-const User = require("../models/User");
-
 exports.respondModification = async (req, res) => {
   const { action } = req.body; // accepted or rejected
   const booking = await Booking.findById(req.params.id)
