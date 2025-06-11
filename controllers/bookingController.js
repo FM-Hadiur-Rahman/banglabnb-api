@@ -321,27 +321,30 @@ exports.requestModification = async (req, res) => {
   const booking = await Booking.findById(req.params.id);
 
   if (!booking) return res.status(404).json({ message: "Booking not found" });
-  if (booking.status !== "confirmed" || booking.paymentStatus !== "paid") {
-    return res
-      .status(400)
-      .json({ message: "Only paid bookings can be modified before check-in" });
+
+  // 🔐 Allow only confirmed + paid bookings before check-in
+  if (
+    booking.status !== "confirmed" ||
+    booking.paymentStatus !== "paid" ||
+    booking.checkInAt
+  ) {
+    return res.status(400).json({
+      message: "Only paid, confirmed, unchecked-in bookings can be modified",
+    });
   }
 
-  // ✅ 1. Validate date range
+  // ✅ Validate date range
   if (!from || !to || new Date(from) >= new Date(to)) {
     return res.status(400).json({ message: "Invalid modification date range" });
   }
 
-  // ✅ 2. Check for conflicting bookings
+  // ✅ Check for booking conflicts
   const conflict = await Booking.findOne({
-    _id: { $ne: booking._id }, // exclude current booking
+    _id: { $ne: booking._id },
     listingId: booking.listingId,
     status: { $ne: "cancelled" },
     $or: [
-      {
-        dateFrom: { $lte: new Date(to) },
-        dateTo: { $gte: new Date(from) },
-      },
+      { dateFrom: { $lte: new Date(to) }, dateTo: { $gte: new Date(from) } },
     ],
   });
 
@@ -351,7 +354,7 @@ exports.requestModification = async (req, res) => {
       .json({ message: "New dates overlap with another booking" });
   }
 
-  // ✅ 3. Save modification request
+  // ✅ Save request
   booking.modificationRequest = {
     status: "requested",
     requestedDates: { from, to },
@@ -359,23 +362,84 @@ exports.requestModification = async (req, res) => {
   };
 
   await booking.save();
-  res.json({ message: "Modification requested", booking });
+  res.json({ message: "Modification request sent", booking });
 };
 
-exports.respondModification = async (req, res) => {
-  const { action } = req.body; // "accepted" or "rejected"
-  const booking = await Booking.findById(req.params.id);
+const sendEmail = require("../utils/sendEmail");
+const User = require("../models/User");
 
-  if (!booking || !["accepted", "rejected"].includes(action))
+exports.respondModification = async (req, res) => {
+  const { action } = req.body; // accepted or rejected
+  const booking = await Booking.findById(req.params.id)
+    .populate("guestId", "email name")
+    .populate("listingId", "title price");
+
+  if (!booking || !["accepted", "rejected"].includes(action)) {
     return res.status(400).json({ message: "Invalid request" });
+  }
 
   if (action === "accepted") {
-    booking.dateFrom = booking.modificationRequest.requestedDates.from;
-    booking.dateTo = booking.modificationRequest.requestedDates.to;
+    const { from, to } = booking.modificationRequest.requestedDates;
+
+    // 🛡 Conflict check again for safety
+    const conflict = await Booking.findOne({
+      _id: { $ne: booking._id },
+      listingId: booking.listingId,
+      status: { $ne: "cancelled" },
+      $or: [
+        { dateFrom: { $lte: new Date(to) }, dateTo: { $gte: new Date(from) } },
+      ],
+    });
+
+    if (conflict) {
+      return res
+        .status(409)
+        .json({ message: "New dates overlap with another booking" });
+    }
+
+    // ✅ Apply changes
+    booking.dateFrom = from;
+    booking.dateTo = to;
   }
 
   booking.modificationRequest.status = action;
   await booking.save();
+
+  const guest = booking.guestId;
+  const nights =
+    (new Date(booking.dateTo) - new Date(booking.dateFrom)) /
+    (1000 * 60 * 60 * 24);
+  const price = booking.listingId.price;
+  const total = nights * price;
+
+  // ✅ Notify guest via email
+  try {
+    await sendEmail({
+      to: guest.email,
+      subject: `📅 Your booking modification was ${action}`,
+      html: `
+        <div style="font-family:sans-serif;">
+          <h2>Your booking change was <strong style="color:${
+            action === "accepted" ? "green" : "red"
+          }">${action}</strong></h2>
+          <p><strong>Listing:</strong> ${booking.listingId.title}</p>
+          ${
+            action === "accepted"
+              ? `<p><strong>New Dates:</strong> ${new Date(
+                  booking.dateFrom
+                ).toLocaleDateString()} → ${new Date(
+                  booking.dateTo
+                ).toLocaleDateString()}</p>
+                 <p><strong>New Total (Est.):</strong> ৳${total.toFixed(2)}</p>`
+              : `<p>The host was unable to accommodate your requested dates.</p>`
+          }
+          <p>Thank you for using BanglaBnB.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("❌ Failed to send guest email:", err.message);
+  }
 
   res.json({ message: `Modification ${action}`, booking });
 };
