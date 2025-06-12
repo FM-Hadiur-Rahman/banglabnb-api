@@ -390,28 +390,65 @@ router.patch(
 
 // === Other ===
 // === Monthly Reviews Stats ===
-router.get("/stats/reviews", protect, authorize("admin"), async (req, res) => {
-  try {
-    const data = await Review.aggregate([
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m", date: "$createdAt" },
+router.get(
+  "/stats/reviews",
+  protect,
+  authorize("admin", "host"),
+  async (req, res) => {
+    try {
+      const data = await Review.aggregate([
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            },
+            count: { $sum: 1 },
           },
-          count: { $sum: 1 },
         },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+        { $sort: { _id: 1 } },
+      ]);
 
-    const result = data.map((item) => ({
-      month: item._id,
-      count: item.count,
-    }));
+      const result = data.map((item) => ({
+        month: item._id,
+        count: item.count,
+      }));
 
-    res.json(result); // ✅ always returns an array
-  } catch (err) {
-    console.error("❌ Failed to get review stats:", err);
-    res.status(500).json([]); // fallback: return empty array
+      res.json(result); // ✅ always returns an array
+    } catch (err) {
+      console.error("❌ Failed to get review stats:", err);
+      res.status(500).json([]); // fallback: return empty array
+    }
   }
-});
+);
+// === Monthly Earnings Stats ===
+router.get(
+  "/stats/earnings",
+  protect,
+  authorize("admin", "host"),
+  async (req, res) => {
+    try {
+      const data = await Booking.aggregate([
+        { $match: { paymentStatus: "paid" } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            },
+            amount: { $sum: "$paidAmount" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]);
+
+      const result = data.map((item) => ({
+        month: item._id,
+        amount: item.amount,
+      }));
+
+      res.json(result); // ✅ always return array
+    } catch (err) {
+      console.error("❌ Failed to get earnings stats:", err);
+      res.status(500).json([]); // return empty array on failure
+    }
+  }
+);
