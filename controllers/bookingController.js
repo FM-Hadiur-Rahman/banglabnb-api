@@ -22,6 +22,22 @@ exports.createBooking = async (req, res) => {
         .json({ message: "Invalid booking dates. Cannot book in the past." });
     }
 
+    const listing = await Listing.findById(listingId);
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
+    // ❌ Check against blocked date ranges
+    const isBlocked = listing.blockedDates?.some(
+      (range) => new Date(range.from) <= to && new Date(range.to) >= from
+    );
+
+    if (isBlocked) {
+      return res.status(409).json({
+        message: "Listing is temporarily unavailable for those dates.",
+      });
+    }
+
     // ❌ Prevent overlapping bookings
     const overlapping = await Booking.findOne({
       listingId,
