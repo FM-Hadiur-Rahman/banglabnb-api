@@ -8,7 +8,7 @@ const {
 const protect = require("../middleware/protect");
 
 router.post("/", protect, createReview);
-router.get("/listing/:listingId", protect, getListingReviews); // ⚠️ Make sure /listing/:listingId
+router.get("/listing/:listingId", getListingReviews); // ⚠️ Make sure /listing/:listingId
 router.patch("/respond/:reviewId", protect, respondToReview); // Consistent with controller
 
 module.exports = router;
