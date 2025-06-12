@@ -8,6 +8,7 @@ const Listing = require("../models/Listing");
 const Booking = require("../models/Booking");
 const sendEmail = require("../utils/sendEmail"); // make sure you have this
 const Payout = require("../models/Payout"); // 👈 import the model
+const Review = require("../models/Review");
 
 // Example admin-only route
 const Review = require("../models/Review");
@@ -396,7 +397,21 @@ router.get(
   authorize("admin", "host"),
   async (req, res) => {
     try {
+      let matchStage = {};
+
+      // If host, limit to reviews from their listings
+      if (req.user.role === "host") {
+        const hostId = req.user._id;
+        const listings = await Listing.find({ hostId }).select("_id");
+        const listingIds = listings.map((l) => l._id);
+
+        matchStage = {
+          listingId: { $in: listingIds },
+        };
+      }
+
       const data = await Review.aggregate([
+        { $match: matchStage },
         {
           $group: {
             _id: {
@@ -413,10 +428,10 @@ router.get(
         count: item.count,
       }));
 
-      res.json(result); // ✅ always returns an array
+      res.json(result);
     } catch (err) {
       console.error("❌ Failed to get review stats:", err);
-      res.status(500).json([]); // fallback: return empty array
+      res.status(500).json([]);
     }
   }
 );
@@ -427,8 +442,19 @@ router.get(
   authorize("admin", "host"),
   async (req, res) => {
     try {
+      let matchStage = { paymentStatus: "paid" };
+
+      // If host, filter only bookings from their listings
+      if (req.user.role === "host") {
+        const hostId = req.user._id;
+        const listings = await Listing.find({ hostId }).select("_id");
+        const listingIds = listings.map((l) => l._id);
+
+        matchStage.listingId = { $in: listingIds };
+      }
+
       const data = await Booking.aggregate([
-        { $match: { paymentStatus: "paid" } },
+        { $match: matchStage },
         {
           $group: {
             _id: {
@@ -445,10 +471,10 @@ router.get(
         amount: item.amount,
       }));
 
-      res.json(result); // ✅ always return array
+      res.json(result);
     } catch (err) {
       console.error("❌ Failed to get earnings stats:", err);
-      res.status(500).json([]); // return empty array on failure
+      res.status(500).json([]);
     }
   }
 );
