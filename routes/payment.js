@@ -315,7 +315,7 @@ router.post("/extra-success", async (req, res) => {
 
   const booking = await Booking.findOne({
     "extraPayment.transactionId": tran_id,
-  });
+  }).populate("guestId");
 
   if (!booking) return res.status(404).send("Booking not found");
 
