@@ -478,3 +478,19 @@ router.get(
     }
   }
 );
+router.get(
+  "/payouts/overdue",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const overdue = await Booking.find({
+      paymentStatus: "paid",
+      checkInAt: { $lte: cutoff },
+      payoutIssued: { $ne: true },
+    }).populate("guestId listingId");
+
+    res.json(overdue);
+  }
+);
