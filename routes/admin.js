@@ -11,7 +11,7 @@ const Payout = require("../models/Payout"); // 👈 import the model
 const Review = require("../models/Review");
 
 // Example admin-only route
-const Review = require("../models/Review");
+
 router.get(
   "/flagged/reviews",
   protect,
