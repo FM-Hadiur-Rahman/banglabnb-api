@@ -341,8 +341,7 @@ exports.requestModification = async (req, res) => {
     const { from, to } = req.body;
     const booking = await Booking.findById(req.params.id)
       .populate("listingId")
-      .populate("guestId")
-      .populate("hostId");
+      .populate("guestId");
 
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
