@@ -158,6 +158,7 @@ exports.verifyEmail = async (req, res) => {
   res.json({
     message: "✅ Email verified successfully!",
     userId: user._id,
+    role: user.role,
   });
 };
 // POST /api/auth/resend-verification
