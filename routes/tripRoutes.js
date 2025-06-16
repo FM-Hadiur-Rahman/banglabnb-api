@@ -10,6 +10,6 @@ const {
 
 router.post("/", protect, authorize("driver"), createTrip);
 router.get("/", getTrips);
-router.get("/my", protect, authorize("driver"), getMyTrips); // ✅ this is the missing route
+router.get("/my", authorize("driver"), getMyTrips); // ✅ this is the missing route
 
 module.exports = router;
