@@ -16,14 +16,16 @@ exports.createTrip = async (req, res) => {
       date: new Date(req.body.date),
     };
 
-    if (req.file?.path) {
+    if (req.file && req.file.path) {
       tripData.image = req.file.path;
     }
 
     const trip = await Trip.create(tripData);
     res.status(201).json(trip);
   } catch (err) {
-    console.error("❌ Trip creation failed:", err);
+    console.error("❌ Trip creation failed:", err.message);
+    console.error(err.stack); // ⬅️ this is key
+    res.status(500).json({ message: err.message });
     // Send actual error for debugging
     res.status(500).json({
       message: "Server error",
