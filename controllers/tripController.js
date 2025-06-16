@@ -6,6 +6,7 @@ exports.createTrip = async (req, res) => {
   try {
     console.log("✅ File received:", req.file);
     console.log("✅ Body received:", req.body);
+    console.log("👤 User ID:", req.user._id);
     const tripData = {
       ...req.body,
       driverId: req.user._id,
