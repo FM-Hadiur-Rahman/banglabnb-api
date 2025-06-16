@@ -1,12 +1,21 @@
 // === controllers/tripController.js ===
 const Trip = require("../models/Trip");
 
+// controllers/tripController.js
 exports.createTrip = async (req, res) => {
   try {
-    const trip = await Trip.create({ ...req.body, driverId: req.user._id });
+    const imageUrl = req.file ? req.file.path : null; // Cloudinary sets .path to the secure_url
+
+    const trip = await Trip.create({
+      ...req.body,
+      driverId: req.user._id,
+      image: imageUrl, // ✅ Store Cloudinary URL
+    });
+
     res.status(201).json(trip);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error("❌ Trip creation error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
