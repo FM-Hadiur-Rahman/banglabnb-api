@@ -4,6 +4,8 @@ const Trip = require("../models/Trip");
 // controllers/tripController.js
 exports.createTrip = async (req, res) => {
   try {
+    console.log("✅ File received:", req.file);
+    console.log("✅ Body received:", req.body);
     const tripData = {
       ...req.body,
       driverId: req.user._id,
