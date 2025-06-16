@@ -7,13 +7,16 @@ exports.createTrip = async (req, res) => {
     console.log("✅ File received:", req.file);
     console.log("✅ Body received:", req.body);
     console.log("👤 User ID:", req.user._id);
+
     const tripData = {
       ...req.body,
       driverId: req.user._id,
+      seatsAvailable: Number(req.body.seatsAvailable),
+      farePerSeat: Number(req.body.farePerSeat),
+      date: new Date(req.body.date),
     };
 
-    // ✅ If image was uploaded, store URL
-    if (req.file && req.file.path) {
+    if (req.file?.path) {
       tripData.image = req.file.path;
     }
 
@@ -21,7 +24,12 @@ exports.createTrip = async (req, res) => {
     res.status(201).json(trip);
   } catch (err) {
     console.error("❌ Trip creation failed:", err);
-    res.status(500).json({ message: "Server error" });
+    // Send actual error for debugging
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+      stack: err.stack,
+    });
   }
 };
 
