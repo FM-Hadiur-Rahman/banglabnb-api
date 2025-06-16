@@ -11,6 +11,7 @@ exports.createTrip = async (req, res) => {
     const tripData = {
       ...req.body,
       driverId: req.user._id,
+      // Ensure correct types
       seatsAvailable: Number(req.body.seatsAvailable),
       farePerSeat: Number(req.body.farePerSeat),
       date: new Date(req.body.date),
@@ -20,18 +21,12 @@ exports.createTrip = async (req, res) => {
       tripData.image = req.file.path;
     }
 
-    const trip = await Trip.create(tripData);
+    const trip = await Trip.create(tripData); // this is where crash likely happens
     res.status(201).json(trip);
   } catch (err) {
     console.error("❌ Trip creation failed:", err.message);
-    console.error(err.stack); // ⬅️ this is key
+    console.error("📦 Stack:", err.stack); // ⬅️ you’ll now see the real reason in logs
     res.status(500).json({ message: err.message });
-    // Send actual error for debugging
-    res.status(500).json({
-      message: "Server error",
-      error: err.message,
-      stack: err.stack,
-    });
   }
 };
 
