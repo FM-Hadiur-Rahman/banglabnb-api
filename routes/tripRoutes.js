@@ -22,6 +22,6 @@ router.post(
 
 router.get("/", getTrips);
 router.get("/my", protect, authorize("driver"), getMyTrips);
-router.get("/:id", protect, getTripById);
+router.get("/:id", getTripById);
 
 module.exports = router;
