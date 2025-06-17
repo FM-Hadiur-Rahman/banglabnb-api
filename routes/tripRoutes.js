@@ -8,6 +8,7 @@ const {
   createTrip,
   getTrips,
   getMyTrips,
+  getTripById,
 } = require("../controllers/tripController");
 
 // 👇 Add upload.single("image") middleware for handling vehicle image
