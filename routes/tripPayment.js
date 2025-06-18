@@ -109,8 +109,9 @@ router.post("/trip-success", async (req, res) => {
           <h2 style="color: #2563eb;">✅ Your Trip is Confirmed!</h2>
           <p>Hi <strong>${user.name}</strong>,</p>
           <p>Your seat(s) for the ride from <strong>${trip.from}</strong> to <strong>${trip.to}</strong> on ${trip.date} at ${trip.time} has been confirmed.</p>
-          <p><strong>Seats:</strong> ${reservation.seats}</p>
-          <p><strong>Total Paid:</strong> ৳${reservation.amount}</p>
+          <p><strong>Seats:</strong> ${reservation.numberOfSeats}</p>
+          <p><strong>Total Paid:</strong> ৳${reservation.totalAmount}</p>
+
           <p>Attached is your booking invoice. Thank you for using BanglaBnB!</p>
         </div>
       `,
@@ -132,7 +133,8 @@ router.post("/trip-success", async (req, res) => {
       <div style="font-family: Arial, sans-serif; color: #1a202c; padding: 24px;">
         <h2 style="color: #16a34a;">🚘 New Trip Reservation</h2>
         <p>Dear <strong>${driver.name}</strong>,</p>
-        <p><strong>${user.name}</strong> has reserved <strong>${reservation.seats}</strong> seat(s) for your trip from <strong>${trip.from}</strong> to <strong>${trip.to}</strong>.</p>
+        <p><strong>${user.name}</strong> has reserved <strong>${reservation.numberOfSeats}</strong> seat(s) for your trip...</p>
+
         <p>Trip Date: ${trip.date} at ${trip.time}</p>
         <p>Check attached invoice for full details.</p>
       </div>
