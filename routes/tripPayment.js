@@ -186,4 +186,25 @@ router.get("/reservation/:tran_id", protect, async (req, res) => {
   }
 });
 
+// ✅ Get Trip Reservation by Transaction ID (Protected)
+router.get("/reservation/:tran_id", protect, async (req, res) => {
+  try {
+    const reservation = await TripReservation.findOne({
+      transactionId: req.params.tran_id,
+      userId: req.user._id, // Ensures users only access their own reservations
+    })
+      .populate("tripId") // populate trip details
+      .populate("userId", "name email"); // populate user details (optional)
+
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    res.json(reservation);
+  } catch (err) {
+    console.error("❌ Failed to fetch reservation:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
