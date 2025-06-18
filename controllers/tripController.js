@@ -1,5 +1,6 @@
 // === controllers/tripController.js ===
 const Trip = require("../models/Trip");
+const mongoose = require("mongoose");
 
 // controllers/tripController.js
 exports.createTrip = async (req, res) => {
@@ -56,10 +57,9 @@ exports.getMyTrips = async (req, res) => {
 
 exports.getTripById = async (req, res) => {
   try {
-    const trip = await Trip.findById(req.params.id).populate(
-      "driverId",
-      "name phone avatar"
-    );
+    const trip = await Trip.findById(req.params.id)
+      .populate("driverId", "name phone avatar")
+      .populate("passengers.user", "name");
 
     if (!trip) {
       return res.status(404).json({ message: "Trip not found" });
@@ -102,8 +102,6 @@ exports.reserveSeat = async (req, res) => {
 
 // Cancel reservation
 exports.cancelReservation = async (req, res) => {
-  console.log("🛑 tripId received:", req.params.tripId);
-
   try {
     const trip = await Trip.findById(req.params.tripId);
 
@@ -135,17 +133,22 @@ exports.cancelReservation = async (req, res) => {
 
 exports.MyRides = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized: No user" });
-    }
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
-    const trips = await Trip.find({ passengers: req.user._id })
-      .populate("driverId", "name")
+    const trips = await Trip.find({
+      passengers: {
+        $elemMatch: {
+          user: userId,
+          status: { $ne: "cancelled" },
+        },
+      },
+    })
+      .populate("driverId", "name phone avatar")
       .sort({ date: -1 });
 
     res.json(trips);
   } catch (err) {
-    console.error("❌ Error fetching my rides:", err.message, err.stack);
+    console.error("❌ Error fetching my rides:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
