@@ -32,9 +32,10 @@ router.get("/my", protect, authorize("driver"), getMyTrips);
 router.get("/", getTrips);
 
 // ✅ DYNAMIC ROUTES — keep at the end
+router.get("/suggestions", SuggesionTrip);
 router.post("/:tripId/reserve", protect, reserveSeat);
 router.post("/:tripId/cancel", protect, cancelReservation);
+
 router.get("/:id", getTripById);
-router.get("/suggestions", SuggesionTrip);
 
 module.exports = router;
