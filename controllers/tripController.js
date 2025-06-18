@@ -106,17 +106,19 @@ exports.cancelReservation = async (req, res) => {
     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
     const index = trip.passengers.findIndex(
-      (p) => p.user.toString() === req.user._id.toString()
+      (p) =>
+        p.user.toString() === req.user._id.toString() &&
+        p.status !== "cancelled"
     );
+
     if (index === -1)
-      return res.status(400).json({ message: "No reservation found" });
+      return res.status(400).json({ message: "No active reservation found" });
 
     const cancelledSeats = trip.passengers[index].seats;
     trip.passengers[index].status = "cancelled";
     trip.passengers[index].cancelledAt = new Date();
-    trip.seatsAvailable += trip.passengers[index].seats;
-
     trip.seatsAvailable += cancelledSeats;
+
     await trip.save();
 
     res.json({ message: "Cancelled", trip });
