@@ -24,10 +24,11 @@ router.post("/trip-initiate", protect, async (req, res) => {
 
     const reservation = await TripReservation.create({
       tripId,
-      passengerId: req.user._id,
+      userId: req.user._id,
       transactionId: tran_id,
-      amount: totalFare,
-      seats,
+      numberOfSeats: seats,
+      farePerSeat: trip.farePerSeat,
+      totalAmount: totalFare,
     });
 
     const data = {
