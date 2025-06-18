@@ -21,7 +21,7 @@ const generateTripInvoice = async (reservation, trip, user) => {
   doc.rotate(-45).opacity(1); // reset
 
   // ✅ Header
-  doc.image(path.join(__dirname, "../assets/banglabnb-logo2.png"), 50, 40, {
+  doc.image(path.join(__dirname, "../assets/banglabnb-logo.png"), 50, 40, {
     width: 100,
   });
   doc
