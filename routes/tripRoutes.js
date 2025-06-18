@@ -13,7 +13,7 @@ const {
   MyRides,
 } = require("../controllers/tripController");
 
-// 👇 Add upload.single("image") middleware for handling vehicle image
+// ✅ CREATE trip (with image upload)
 router.post(
   "/",
   protect,
@@ -22,11 +22,15 @@ router.post(
   createTrip
 );
 
-router.get("/", getTrips);
+// ✅ STATIC ROUTES — define BEFORE dynamic ones
+router.get("/my-rides", protect, MyRides); // must come before `/:id`
 router.get("/my", protect, authorize("driver"), getMyTrips);
+
+// ✅ PUBLIC ROUTES
+router.get("/", getTrips);
+
+// ✅ DYNAMIC ROUTES — keep at the end
 router.get("/:id", getTripById);
 router.post("/:tripId/reserve", protect, reserveSeat);
-// GET /api/trips/my-rides
-router.get("/my-rides", protect, MyRides);
 
 module.exports = router;
