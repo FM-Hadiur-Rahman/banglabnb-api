@@ -78,8 +78,15 @@ router.post("/trip-success", async (req, res) => {
   try {
     const reservation = await TripReservation.findOne({
       transactionId: tran_id,
-    });
-    if (!reservation) return res.status(404).send("Reservation not found");
+    })
+      .populate("tripId")
+      .populate("userId");
+
+    if (!reservation || !reservation.tripId || !reservation.userId) {
+      return res
+        .status(404)
+        .json({ message: "Missing reservation, trip, or user" });
+    }
 
     reservation.status = "paid";
     reservation.valId = val_id;
@@ -100,7 +107,11 @@ router.post("/trip-success", async (req, res) => {
     // ✅ Generate invoice and send email to rider
     const user = await User.findById(reservation.passengerId);
     const trip = await Trip.findById(reservation.tripId);
-    const invoicePath = await generateTripInvoice(reservation, trip, user);
+    const invoicePath = await generateTripInvoice(
+      reservation,
+      reservation.tripId,
+      reservation.userId
+    );
 
     await sendEmail({
       to: user.email,
