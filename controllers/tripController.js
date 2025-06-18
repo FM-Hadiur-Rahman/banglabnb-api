@@ -7,7 +7,7 @@ exports.createTrip = async (req, res) => {
     const tripData = {
       ...req.body,
       driverId: req.user._id,
-      seatsAvailable: Number(req.body.seatsAvailable),
+      totalSeats: Number(req.body.totalSeats),
       farePerSeat: Number(req.body.farePerSeat),
     };
     // ✅ Parse location from JSON string
