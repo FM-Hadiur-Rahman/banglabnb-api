@@ -100,13 +100,17 @@ exports.reserveSeat = async (req, res) => {
 };
 exports.MyRides = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: No user" });
+    }
+
     const trips = await Trip.find({ passengers: req.user._id })
       .populate("driverId", "name")
       .sort({ date: -1 });
 
     res.json(trips);
   } catch (err) {
-    console.error("❌ Error fetching my rides", err);
+    console.error("❌ Error fetching my rides:", err.message, err.stack);
     res.status(500).json({ message: "Server error" });
   }
 };
