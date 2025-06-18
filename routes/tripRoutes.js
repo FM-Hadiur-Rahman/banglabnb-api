@@ -11,6 +11,7 @@ const {
   getTripById,
   reserveSeat,
   MyRides,
+  cancelReservation,
 } = require("../controllers/tripController");
 
 // ✅ CREATE trip (with image upload)
@@ -32,5 +33,6 @@ router.get("/", getTrips);
 // ✅ DYNAMIC ROUTES — keep at the end
 router.get("/:id", getTripById);
 router.post("/:tripId/reserve", protect, reserveSeat);
+router.delete("/:tripId/cancel", protect, cancelReservation);
 
 module.exports = router;
