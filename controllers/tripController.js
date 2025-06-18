@@ -176,42 +176,40 @@ exports.MyRides = async (req, res) => {
 exports.SuggesionTrip = async (req, res) => {
   const { from, to, lat, lng } = req.query;
 
+  if (!from || !to) {
+    return res.status(400).json({ message: "Missing from or to" });
+  }
+
   try {
-    const textQuery = {
+    const match = {
+      from: new RegExp(from, "i"),
+      to: new RegExp(to, "i"),
       status: "active",
-      date: { $gte: new Date() }, // Only upcoming trips
     };
 
-    if (from) textQuery.from = new RegExp(from, "i");
-    if (to) textQuery.to = new RegExp(to, "i");
+    // Base query
+    let query = Trip.find(match).limit(5);
 
-    let trips = [];
-
-    // ✅ Geo + Text match
+    // If lat/lng provided, add $near
     if (lat && lng) {
-      trips = await Trip.aggregate([
-        {
-          $geoNear: {
-            near: {
+      query = Trip.find({
+        ...match,
+        location: {
+          $near: {
+            $geometry: {
               type: "Point",
               coordinates: [parseFloat(lng), parseFloat(lat)],
             },
-            distanceField: "distance",
-            spherical: true,
-            maxDistance: 10000, // 10km radius
-            query: textQuery,
+            $maxDistance: 20000, // 20 km radius
           },
         },
-        { $limit: 5 },
-      ]);
-    } else {
-      // fallback: text match only
-      trips = await Trip.find(textQuery).limit(5);
+      }).limit(5);
     }
 
+    const trips = await query;
     res.json(trips);
   } catch (err) {
-    console.error("❌ Trip suggestion error:", err.message);
+    console.error("❌ Trip suggestions error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
