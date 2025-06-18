@@ -111,6 +111,7 @@ exports.cancelReservation = async (req, res) => {
 
     const index = trip.passengers.findIndex(
       (p) =>
+        p.user && // 👈 prevent TypeError
         p.user.toString() === req.user._id.toString() &&
         p.status !== "cancelled"
     );
