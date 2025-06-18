@@ -73,6 +73,8 @@ exports.getTripById = async (req, res) => {
 };
 // controllers/tripController.js
 exports.reserveSeat = async (req, res) => {
+  console.log("🛑 tripId received:", req.params.tripId);
+
   try {
     const { seats = 1 } = req.body;
     const trip = await Trip.findById(req.params.tripId);
@@ -100,6 +102,8 @@ exports.reserveSeat = async (req, res) => {
 
 // Cancel reservation
 exports.cancelReservation = async (req, res) => {
+  console.log("🛑 tripId received:", req.params.tripId);
+
   try {
     const trip = await Trip.findById(req.params.tripId);
 
