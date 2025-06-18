@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const tripSchema = new mongoose.Schema(
   {
     from: { type: String, required: true },
@@ -5,7 +7,7 @@ const tripSchema = new mongoose.Schema(
     date: { type: String, required: true },
     time: { type: String, required: true },
 
-    totalSeats: { type: Number, required: true }, // ✅ max capacity
+    totalSeats: { type: Number, required: true },
     farePerSeat: { type: Number, required: true },
 
     passengers: [
@@ -17,7 +19,13 @@ const tripSchema = new mongoose.Schema(
           enum: ["reserved", "cancelled"],
           default: "reserved",
         },
-        cancelledAt: { type: Date },
+        cancelledAt: Date,
+        paymentStatus: {
+          type: String,
+          enum: ["pending", "paid", "failed"],
+          default: "pending",
+        },
+        transactionId: { type: String },
       },
     ],
 
@@ -50,12 +58,14 @@ const tripSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 tripSchema.index({ location: "2dsphere" });
 
-// ✅ Virtual field (not stored in DB)
 tripSchema.virtual("seatsAvailable").get(function () {
   const reservedSeats = this.passengers
-    .filter((p) => p.status !== "cancelled")
+    .filter((p) => p.status === "reserved")
     .reduce((sum, p) => sum + (p.seats || 1), 0);
   return this.totalSeats - reservedSeats;
 });
+
+module.exports = mongoose.model("Trip", tripSchema);
