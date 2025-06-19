@@ -54,7 +54,7 @@ exports.initiateCombinedPayment = async (req, res) => {
     );
 
     if (sslRes.data?.status === "SUCCESS") {
-      return res.json({ url: sslRes.data.GatewayPageURL });
+      return res.json({ gatewayUrl: sslRes.data.GatewayPageURL });
     } else {
       return res
         .status(400)
