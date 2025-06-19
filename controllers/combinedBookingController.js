@@ -66,7 +66,7 @@ exports.createCombinedBooking = async (req, res) => {
     // 4. Return data for payment initiation
     res.json({
       bookingId: booking._id,
-      tripId: selectedTripId || null,
+      tripId: tripId || null,
       amount: totalAmount,
       breakdown: {
         staySubtotal,
