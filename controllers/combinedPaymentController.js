@@ -5,19 +5,24 @@ const Listing = require("../models/Listing");
 const generateInvoice = require("../utils/generateInvoice");
 const sendEmail = require("../utils/sendEmail");
 
+const axios = require("axios");
+
 exports.initiateCombinedPayment = async (req, res) => {
   const { bookingId, amount } = req.body;
 
-  const booking = await Booking.findById(bookingId).populate("listingId");
-  if (!booking) return res.status(404).json({ message: "Booking not found" });
+  const booking = await Booking.findById(bookingId)
+    .populate("listingId")
+    .populate("guestId");
 
-  const { _id, guestId, tripId, combined } = booking;
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
 
   const transactionId = `COMBINED_${bookingId}_${Date.now()}`;
   booking.transactionId = transactionId;
   await booking.save();
 
-  const data = {
+  const postData = {
+    store_id: process.env.SSLC_STORE_ID,
+    store_passwd: process.env.SSLC_STORE_PASS,
     total_amount: amount,
     currency: "BDT",
     tran_id: transactionId,
@@ -26,25 +31,37 @@ exports.initiateCombinedPayment = async (req, res) => {
     cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
     ipn_url: `${process.env.API_URL}/api/combined-payment/success`,
 
-    cus_name: guestId?.name || "Guest",
-    cus_email: guestId?.email || "guest@email.com",
+    cus_name: booking.guestId.name,
+    cus_email: booking.guestId.email,
     cus_add1: "Bangladesh",
-    cus_phone: guestId?.phone || "0000",
+    cus_phone: booking.guestId.phone,
 
-    product_name: combined ? "Stay + Ride" : "Stay Only",
+    product_name: booking.combined ? "Stay + Ride" : "Stay Only",
     product_category: "CombinedBooking",
     product_profile: "general",
   };
 
-  const sslcz = new SSLCommerzPayment(
-    process.env.SSLC_STORE_ID,
-    process.env.SSLC_STORE_PASS,
-    false
-  );
-  sslcz.init(data).then((apiResponse) => {
-    return res.json({ gatewayUrl: apiResponse.GatewayPageURL });
-  });
+  try {
+    const sslRes = await axios.post(
+      "https://sandbox.sslcommerz.com/gwprocess/v4/api.php",
+      postData
+    );
+
+    if (sslRes.data?.status === "SUCCESS") {
+      return res.json({ url: sslRes.data.GatewayPageURL });
+    } else {
+      return res
+        .status(400)
+        .json({ message: "SSLCommerz initiation failed", data: sslRes.data });
+    }
+  } catch (err) {
+    console.error("❌ SSLCommerz error:", err.message);
+    res
+      .status(500)
+      .json({ message: "Payment gateway error", error: err.message });
+  }
 };
+
 exports.combinedPaymentSuccess = async (req, res) => {
   const { tran_id, val_id, amount } = req.body;
 
@@ -89,7 +106,7 @@ exports.combinedPaymentSuccess = async (req, res) => {
     });
 
     res.redirect(
-      `${process.env.FRONTEND_URL}/payment-success?tran_id=${tran_id}`
+      `${process.env.CLIENT_URL}/payment-success?tran_id=${tran_id}`
     );
   } catch (err) {
     console.error("❌ Combined Payment success error:", err);
