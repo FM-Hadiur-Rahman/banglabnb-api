@@ -1,10 +1,11 @@
+require("dotenv").config();
 const Booking = require("../models/Booking");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
 const Listing = require("../models/Listing");
 const generateInvoice = require("../utils/generateInvoice");
 const sendEmail = require("../utils/sendEmail");
-
+const qs = require("qs");
 const axios = require("axios");
 
 exports.initiateCombinedPayment = async (req, res) => {
@@ -43,8 +44,13 @@ exports.initiateCombinedPayment = async (req, res) => {
 
   try {
     const sslRes = await axios.post(
-      "https://sandbox.sslcommerz.com/gwprocess/v4/api.php",
-      postData
+      process.env.SSLCOMMERZ_API_URL,
+      qs.stringify(postData),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
     );
 
     if (sslRes.data?.status === "SUCCESS") {
