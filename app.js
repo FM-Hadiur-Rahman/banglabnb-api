@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db.js");
 
 const logRoute = require("./routes/log");
+const adminLogRoutes = require("./routes/adminLogs");
 
 const authRoutes = require("./routes/auth");
 const listingRoutes = require("./routes/listing");
@@ -54,6 +55,7 @@ app.get("/", (req, res) => {
 
 // ✅ Mount routes
 app.use("/api/logs", logRoute);
+app.use("/api/logs", adminLogRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingRoutes);
