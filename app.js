@@ -76,6 +76,7 @@ app.use("/api/combined-bookings", require("./routes/combinedBooking"));
 app.use("/api/combined-payment", require("./routes/combinedPayment"));
 app.use("/api/banners", bannerRoutes);
 app.use("/api/upload", require("./routes/upload"));
+app.use("/api/promocode", require("./routes/promocode"));
 
 app.use((err, req, res, next) => {
   res.header("Access-Control-Allow-Origin", "https://banglabnb.com");
