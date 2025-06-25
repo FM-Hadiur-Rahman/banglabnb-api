@@ -1,18 +1,11 @@
 const mongoose = require("mongoose");
 
-const promocodeSchema = new mongoose.Schema({
+const promoCodeSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, uppercase: true },
-  discountType: { type: String, enum: ["flat", "percent"], required: true },
-  amount: { type: Number, required: true }, // amount or percentage
-  maxUses: { type: Number, default: 1 },
-  usedCount: { type: Number, default: 0 },
-  expiresAt: { type: Date },
-  minBookingAmount: { type: Number, default: 0 },
-  applicableTo: {
-    type: String,
-    enum: ["stay", "ride", "both"],
-    default: "both",
-  },
+  discount: { type: Number, required: true }, // e.g., 200 means ৳200 off
+  type: { type: String, enum: ["stay", "ride", "combined"], default: "stay" },
+  isActive: { type: Boolean, default: true },
+  expiresAt: { type: Date, required: true },
 });
 
-module.exports = mongoose.model("Promocode", promocodeSchema);
+module.exports = mongoose.model("PromoCode", promoCodeSchema);

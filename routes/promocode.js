@@ -1,39 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const Promocode = require("../models/Promocode");
+const PromoCode = require("../models/PromoCode");
 
 router.post("/validate", async (req, res) => {
-  const { code, type, totalAmount } = req.body;
+  try {
+    const { code, type = "stay" } = req.body;
+    const promo = await PromoCode.findOne({
+      code: code.toUpperCase(),
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+      $or: [{ type }, { type: "combined" }],
+    });
 
-  const promo = await Promocode.findOne({ code: code.toUpperCase() });
-  if (!promo) return res.status(404).json({ message: "❌ Invalid promo code" });
+    if (!promo) {
+      return res.status(400).json({ message: "Invalid or expired promo code" });
+    }
 
-  if (promo.expiresAt && promo.expiresAt < Date.now())
-    return res.status(400).json({ message: "⚠️ Promo code expired" });
-
-  if (promo.maxUses && promo.usedCount >= promo.maxUses)
-    return res
-      .status(400)
-      .json({ message: "⚠️ Promo code usage limit reached" });
-
-  if (promo.applicableTo !== "both" && promo.applicableTo !== type)
-    return res
-      .status(400)
-      .json({ message: `⚠️ Not applicable to ${type} bookings` });
-
-  if (totalAmount < promo.minBookingAmount)
-    return res
-      .status(400)
-      .json({
-        message: `Minimum booking amount is ৳${promo.minBookingAmount}`,
-      });
-
-  let discount = promo.amount;
-  if (promo.discountType === "percent") {
-    discount = Math.round((promo.amount / 100) * totalAmount);
+    res.json({ discount: promo.discount });
+  } catch (err) {
+    console.error("Promo validation error:", err);
+    res.status(500).json({ message: "Server error validating promo" });
   }
-
-  return res.json({ success: true, discount, promoId: promo._id });
 });
 
 module.exports = router;
