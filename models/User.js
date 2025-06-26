@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema({
@@ -100,12 +101,11 @@ const userSchema = new mongoose.Schema({
     unique: true,
     uppercase: true,
     default: function () {
-      return (
-        this.name?.slice(0, 3).toUpperCase() +
-        crypto.randomBytes(3).toString("hex").toUpperCase()
-      );
+      const prefix = this.name ? this.name.slice(0, 3).toUpperCase() : "USR";
+      return prefix + crypto.randomBytes(3).toString("hex").toUpperCase();
     },
   },
+
   referredBy: {
     type: String, // stores the referralCode used
   },
