@@ -14,18 +14,7 @@ router.get("/:id", listingCtrl.getListingById);
 router.get("/host/:hostId", listingCtrl.getListingsByHost);
 
 // ✅ Protected CRUD routes
-router.get(
-  "/listings/deleted",
-  protect,
-  authorize("admin"),
-  listingCtrl.getDeletedListings
-);
-router.patch(
-  "/listings/:id/restore",
-  protect,
-  authorize("admin"),
-  listingCtrl.restoreListing
-);
+
 router.post(
   "/",
   protect,
@@ -34,7 +23,7 @@ router.post(
 );
 
 router.put("/:id", protect, listingCtrl.updateListing);
-router.delete("/:id/soft-delete", protect, listingCtrl.deleteListing);
+router.delete("/:id", protect, listingCtrl.deleteListing);
 router.post(
   "/:id/block-dates",
   protect,
