@@ -34,7 +34,7 @@ router.post(
 );
 
 router.put("/:id", protect, listingCtrl.updateListing);
-router.delete("/:id", protect, listingCtrl.deleteListing);
+router.delete("/:id/soft-delete", protect, listingCtrl.deleteListing);
 router.post(
   "/:id/block-dates",
   protect,
