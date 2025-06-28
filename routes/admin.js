@@ -10,6 +10,7 @@ const sendEmail = require("../utils/sendEmail"); // make sure you have this
 const Payout = require("../models/Payout"); // 👈 import the model
 const Review = require("../models/Review");
 const PromoCode = require("../models/PromoCode");
+const GlobalConfig = require("../models/GlobalConfig"); // ✅ this must be present
 
 // Example admin-only route
 
