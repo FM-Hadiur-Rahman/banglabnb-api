@@ -32,7 +32,7 @@ const generateInvoice = async (
       stream.on("error", reject);
     }
 
-    const logoPath = path.join(__dirname, "../assets/banglabnb-logo.png");
+    const logoPath = path.join(__dirname, "../assets/banglabnb-logo2.png");
     const banglaFontPath = path.join(
       __dirname,
       "../fonts/NotoSansBengali-VariableFont_wdth,wght.ttf"
@@ -40,27 +40,24 @@ const generateInvoice = async (
     if (fs.existsSync(banglaFontPath))
       doc.registerFont("Bangla", banglaFontPath);
 
-    // 🟩 Header background
-    doc.rect(0, 0, doc.page.width, 100).fill("#e6f2f0");
+    // #34495e Header background (orange)
+    doc.rect(0, 0, doc.page.width, 100).fill("#34495e"); // Orange color
 
-    // 🖼 Logo image
+    // 🖼 Logo image (smaller)
     if (fs.existsSync(logoPath)) {
-      doc
-        .image(logoPath, 430, 15, {
-          fit: [100, 70], // Keeps aspect ratio
-          align: "center",
-          valign: "center",
-        })
-        .rect(430, 15, 100, 70) // Optional: add a border box
-        .stroke();
+      doc.image(logoPath, 460, 20, {
+        fit: [70, 50], // Smaller image
+        align: "center",
+        valign: "center",
+      });
     }
 
-    // 📝 Optional centered label below the image
+    // 📝 Optional logo caption (can be removed if not needed)
     doc
       .font("Helvetica")
       .fontSize(10)
-      .fillColor("gray")
-      .text("BanglaBnB", 430, 90, { width: 100, align: "center" });
+      .fillColor("white")
+      .text("BanglaBnB", 460, 75, { width: 70, align: "center" });
 
     doc
       .fontSize(14)
