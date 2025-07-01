@@ -21,6 +21,14 @@ exports.initiateCombinedPayment = async (req, res) => {
   booking.transactionId = transactionId;
   await booking.save();
 
+  const guest = booking.guestId;
+
+  if (!guest?.name || !guest?.email || !guest?.phone) {
+    return res.status(400).json({
+      message: "Missing guest information (name, email, or phone)",
+    });
+  }
+
   const postData = {
     store_id: process.env.SSLC_STORE_ID,
     store_passwd: process.env.SSLC_STORE_PASS,
@@ -32,10 +40,10 @@ exports.initiateCombinedPayment = async (req, res) => {
     cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
     ipn_url: `${process.env.API_URL}/api/combined-payment/success`,
 
-    cus_name: booking.guestId.name,
-    cus_email: booking.guestId.email,
-    cus_add1: "Bangladesh",
-    cus_phone: booking.guestId.phone,
+    cus_name: guest.name || "Guest",
+    cus_email: guest.email || "guest@example.com",
+    cus_add1: guest.district || "Bangladesh",
+    cus_phone: guest.phone || "01700000000",
 
     product_name: booking.combined ? "Stay + Ride" : "Stay Only",
     product_category: "CombinedBooking",
