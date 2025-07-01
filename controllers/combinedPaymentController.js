@@ -9,20 +9,15 @@ const qs = require("qs");
 const axios = require("axios");
 
 exports.initiateCombinedPayment = async (req, res) => {
-  const { bookingId, amount } = req.body;
+  const { bookingId, amount, customer } = req.body;
 
   try {
-    const booking = await Booking.findById(bookingId)
-      .populate("listingId")
-      .populate("guestId");
-
+    const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
     const transactionId = `COMBINED_${bookingId}_${Date.now()}`;
     booking.transactionId = transactionId;
     await booking.save();
-
-    const guest = booking.guestId;
 
     const data = {
       store_id: process.env.SSLCOMMERZ_STORE_ID,
@@ -34,13 +29,13 @@ exports.initiateCombinedPayment = async (req, res) => {
       fail_url: `${process.env.CLIENT_URL}/payment-fail`,
       cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
       ipn_url: `${process.env.API_URL}/api/combined-payment/ipn`,
-      cus_name: guest?.name || "Guest",
-      cus_email: guest?.email || "guest@example.com",
-      cus_add1: guest?.district || "Bangladesh",
+      cus_name: customer?.name || "Guest",
+      cus_email: customer?.email || "guest@example.com",
+      cus_add1: customer?.address || "Bangladesh",
       cus_city: "Dhaka",
       cus_postcode: "1200",
       cus_country: "Bangladesh",
-      cus_phone: guest?.phone || "01700000000",
+      cus_phone: customer?.phone || "01700000000",
       shipping_method: "NO",
       product_name: "BanglaBnB Stay + Ride",
       product_category: "Combined",
@@ -50,11 +45,7 @@ exports.initiateCombinedPayment = async (req, res) => {
     const response = await axios.post(
       process.env.SSLCOMMERZ_API_URL,
       qs.stringify(data),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
     if (!response.data.GatewayPageURL) {
