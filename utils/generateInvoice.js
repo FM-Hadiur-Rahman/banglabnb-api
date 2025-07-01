@@ -40,14 +40,28 @@ const generateInvoice = async (
     if (fs.existsSync(banglaFontPath))
       doc.registerFont("Bangla", banglaFontPath);
 
-    // 🟩 Header
+    // 🟩 Header background
     doc.rect(0, 0, doc.page.width, 100).fill("#e6f2f0");
-    if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 30, { width: 80 });
+
+    // 🖼 Logo image
+    if (fs.existsSync(logoPath)) {
+      doc
+        .image(logoPath, 430, 15, {
+          fit: [100, 70], // Keeps aspect ratio
+          align: "center",
+          valign: "center",
+        })
+        .rect(430, 15, 100, 70) // Optional: add a border box
+        .stroke();
+    }
+
+    // 📝 Optional centered label below the image
     doc
-      .fillColor("#006a4e")
-      .font("Helvetica-Bold")
-      .fontSize(22)
-      .text("BanglaBnB", 0, 40, { align: "right", width: 500 });
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("gray")
+      .text("BanglaBnB", 430, 90, { width: 100, align: "center" });
+
     doc
       .fontSize(14)
       .fillColor("#d21034")
