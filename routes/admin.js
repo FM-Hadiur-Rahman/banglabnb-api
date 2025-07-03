@@ -724,11 +724,13 @@ router.get(
       // Add user rows
       users.forEach((user) => {
         worksheet.addRow({
-          name: user.name,
-          email: user.email,
-          role: user.role,
+          name: user.name || "N/A",
+          email: user.email || "N/A",
+          role: user.role || "N/A",
           isVerified: user.isVerified ? "✅" : "❌",
-          createdAt: user.createdAt.toISOString().split("T")[0],
+          createdAt: user.createdAt
+            ? user.createdAt.toISOString().split("T")[0]
+            : "N/A",
         });
       });
 
