@@ -11,6 +11,8 @@ const Payout = require("../models/Payout"); // 👈 import the model
 const Review = require("../models/Review");
 const PromoCode = require("../models/PromoCode");
 const GlobalConfig = require("../models/GlobalConfig"); // ✅ this must be present
+const { Parser } = require("json2csv");
+const ExcelJS = require("exceljs");
 
 // Example admin-only route
 
@@ -668,6 +670,83 @@ router.patch(
     } catch (err) {
       console.error("Toggle failed:", err);
       res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+// /routes/admin.js
+
+router.get("/export/users", protect, authorize("admin"), async (req, res) => {
+  try {
+    const users = await User.find().select("-password -__v");
+    const fields = [
+      "_id",
+      "name",
+      "email",
+      "phone",
+      "role",
+      "isVerified",
+      "kyc.status",
+      "createdAt",
+    ];
+    const opts = { fields };
+    const parser = new Parser(opts);
+    const csv = parser.parse(users);
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("users.csv");
+    return res.send(csv);
+  } catch (err) {
+    console.error("❌ Export failed:", err);
+    res.status(500).json({ message: "Failed to export users" });
+  }
+});
+
+router.get(
+  "/export/users-xlsx",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    try {
+      const users = await User.find().select("-password -__v");
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Users");
+
+      sheet.columns = [
+        { header: "ID", key: "_id", width: 24 },
+        { header: "Name", key: "name", width: 20 },
+        { header: "Email", key: "email", width: 25 },
+        { header: "Phone", key: "phone", width: 15 },
+        { header: "Role", key: "role", width: 12 },
+        { header: "Verified", key: "isVerified", width: 10 },
+        { header: "KYC", key: "kyc.status", width: 10 },
+        { header: "Created At", key: "createdAt", width: 20 },
+      ];
+
+      users.forEach((user) => {
+        sheet.addRow({
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || "",
+          role: user.role,
+          isVerified: user.isVerified ? "✅" : "❌",
+          "kyc.status": user.kyc?.status || "",
+          createdAt: user.createdAt.toISOString().split("T")[0],
+        });
+      });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", "attachment; filename=users.xlsx");
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      console.error("❌ Failed to export Excel:", err);
+      res.status(500).json({ message: "Failed to export Excel" });
     }
   }
 );
