@@ -707,46 +707,44 @@ router.get(
   authorize("admin"),
   async (req, res) => {
     try {
-      const users = await User.find().select("-password -__v");
+      const users = await User.find().select("-password");
 
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("Users");
+      const worksheet = workbook.addWorksheet("Users");
 
-      sheet.columns = [
-        { header: "ID", key: "_id", width: 24 },
-        { header: "Name", key: "name", width: 20 },
-        { header: "Email", key: "email", width: 25 },
-        { header: "Phone", key: "phone", width: 15 },
-        { header: "Role", key: "role", width: 12 },
+      // Add header row
+      worksheet.columns = [
+        { header: "Name", key: "name", width: 25 },
+        { header: "Email", key: "email", width: 30 },
+        { header: "Role", key: "role", width: 15 },
         { header: "Verified", key: "isVerified", width: 10 },
-        { header: "KYC", key: "kyc.status", width: 10 },
         { header: "Created At", key: "createdAt", width: 20 },
       ];
 
+      // Add user rows
       users.forEach((user) => {
-        sheet.addRow({
-          _id: user._id,
+        worksheet.addRow({
           name: user.name,
           email: user.email,
-          phone: user.phone || "",
           role: user.role,
           isVerified: user.isVerified ? "✅" : "❌",
-          "kyc.status": user.kyc?.status || "",
           createdAt: user.createdAt.toISOString().split("T")[0],
         });
       });
 
+      // Set response headers
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
       res.setHeader("Content-Disposition", "attachment; filename=users.xlsx");
 
+      // Write workbook to response
       await workbook.xlsx.write(res);
       res.end();
     } catch (err) {
-      console.error("❌ Failed to export Excel:", err);
-      res.status(500).json({ message: "Failed to export Excel" });
+      console.error("❌ Excel export error:", err);
+      res.status(500).json({ message: "Failed to export users as Excel" });
     }
   }
 );
