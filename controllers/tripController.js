@@ -1,6 +1,6 @@
 // === controllers/tripController.js ===
 const Trip = require("../models/Trip");
-const cloudinary = require("../middleware/cloudinary");
+const cloudinary = require("../middleware/cloudinaryUpload");
 const sendEmail = require("../utils/sendEmail");
 const User = require("../models/User");
 
