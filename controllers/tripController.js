@@ -1,5 +1,6 @@
 // === controllers/tripController.js ===
 const Trip = require("../models/Trip");
+const cloudinary = require("../middleware/cloudinaryUpload");
 
 // controllers/tripController.js
 exports.createTrip = async (req, res) => {
@@ -71,12 +72,13 @@ exports.getTripById = async (req, res) => {
   }
 };
 // controllers/tripController.js
-exports.reserveSeat = async (req, res) => {
-  console.log("🛑 tripId received:", req.params.tripId);
+const User = require("../models/User");
+const sendEmail = require("../utils/sendEmail");
 
+exports.reserveSeat = async (req, res) => {
   try {
     const { seats = 1 } = req.body;
-    const trip = await Trip.findById(req.params.tripId);
+    const trip = await Trip.findById(req.params.tripId).populate("driverId");
 
     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
@@ -93,24 +95,54 @@ exports.reserveSeat = async (req, res) => {
       .reduce((sum, p) => sum + (p.seats || 1), 0);
 
     const availableSeats = trip.totalSeats - reservedSeats;
-
     if (availableSeats < seats)
-      return res.status(400).json({ message: "Not enough seats available" });
+      return res
+        .status(400)
+        .json({ message: `Only ${availableSeats} seat(s) available` });
 
-    trip.passengers.push({ user: req.user._id, seats });
+    trip.passengers.push({
+      user: req.user._id,
+      seats,
+      status: "reserved",
+      paymentStatus: "pending",
+    });
 
-    // ✅ Mark as booked if all seats filled
     if (reservedSeats + seats >= trip.totalSeats) {
       trip.status = "booked";
     }
 
     await trip.save();
-    res.json({ message: "Reserved", trip });
+
+    // Send email to passenger
+    const passenger = await User.findById(req.user._id);
+    if (passenger?.email) {
+      await sendEmail({
+        to: passenger.email,
+        subject: "Trip Reserved on BanglaBnB 🚗",
+        html: `
+          <p>Hi ${passenger.name},</p>
+          <p>Your seat has been reserved for the trip from <b>${
+            trip.from
+          }</b> to <b>${trip.to}</b> on <b>${trip.date}</b> at <b>${
+          trip.time
+        }</b>.</p>
+          <p>Seats Reserved: ${seats} | Fare per Seat: ৳${trip.farePerSeat}</p>
+          <p>Total: ৳${seats * trip.farePerSeat}</p>
+          <br/>
+          <p>Driver: ${trip.driverId.name}</p>
+          <p>Please complete the payment to confirm your reservation.</p>
+          <p>Thanks for using <b>BanglaBnB Rides</b>!</p>
+        `,
+      });
+    }
+
+    res.json({ message: "✅ Reserved and email sent", trip });
   } catch (err) {
     console.error("❌ Reserve failed:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 exports.updateTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
