@@ -36,6 +36,8 @@ router.get("/", getTrips);
 
 router.post("/:tripId/reserve", protect, reserveSeat);
 router.post("/:tripId/cancel", protect, cancelReservation);
+router.put("/:id", protect, upload.single("image"), updateTrip);
+router.put("/:id/cancel", protect, cancelTrip);
 
 router.get("/:id", getTripById);
 
