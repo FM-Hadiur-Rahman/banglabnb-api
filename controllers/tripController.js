@@ -254,6 +254,97 @@ exports.cancelReservation = async (req, res) => {
   }
 };
 
+exports.reserveSeat = async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const { seats = 1 } = req.body;
+
+    const trip = await Trip.findById(tripId).populate("driverId");
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    // Trip must be available
+    if (trip.status !== "available") {
+      return res.status(400).json({ message: "Trip is not available" });
+    }
+
+    // Prevent past bookings
+    const tripStart = new Date(`${trip.date}T${trip.time}`);
+    if (tripStart < new Date()) {
+      return res.status(400).json({ message: "Trip already departed" });
+    }
+
+    // Prevent duplicate booking
+    const alreadyReserved = trip.passengers.some(
+      (p) =>
+        p.user.toString() === req.user._id.toString() && p.status === "reserved"
+    );
+    if (alreadyReserved) {
+      return res
+        .status(400)
+        .json({ message: "You already reserved this trip" });
+    }
+
+    // Check seat availability
+    const reservedSeats = trip.passengers
+      .filter((p) => p.status === "reserved")
+      .reduce((sum, p) => sum + (p.seats || 1), 0);
+    const availableSeats = trip.totalSeats - reservedSeats;
+
+    if (seats > availableSeats) {
+      return res.status(400).json({
+        message: `Only ${availableSeats} seat(s) available`,
+      });
+    }
+
+    // Add reservation
+    trip.passengers.push({
+      user: req.user._id,
+      seats,
+      status: "reserved",
+      paymentStatus: "pending", // update to "paid" after SSLCOMMERZ success
+    });
+
+    if (reservedSeats + seats >= trip.totalSeats) {
+      trip.status = "booked";
+    }
+
+    await trip.save();
+
+    // Fetch passenger details
+    const passenger = await User.findById(req.user._id);
+
+    // Send confirmation email to passenger
+    if (passenger?.email) {
+      await sendEmail({
+        to: passenger.email,
+        subject: "Trip Reservation Confirmed",
+        html: `
+          <p>Hello ${passenger.name},</p>
+          <p>🎉 Your reservation for the trip from <b>${trip.from}</b> to <b>${
+          trip.to
+        }</b> on <b>${trip.date}</b> at <b>${
+          trip.time
+        }</b> has been confirmed.</p>
+          <p>Driver: <b>${trip.driverId.name}</b></p>
+          <p>Reserved Seats: <b>${seats}</b></p>
+          <p>Fare per Seat: ৳${trip.farePerSeat}</p>
+          <p>Total Fare: ৳${seats * trip.farePerSeat}</p>
+          <br/>
+          <p>Please complete the payment to confirm your seat.</p>
+          <p>Thanks for using BanglaBnB Rides!</p>
+        `,
+      });
+    }
+
+    res.status(200).json({
+      message: "✅ Trip reserved successfully and email sent",
+      trip,
+    });
+  } catch (err) {
+    console.error("❌ Reserve seat error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 exports.MyRides = async (req, res) => {
   console.log("UserId: ", req.user.id);
   try {
