@@ -1,9 +1,7 @@
 // === controllers/tripController.js ===
 const Trip = require("../models/Trip");
-const cloudinary = require("../middleware/cloudinaryUpload");
-const sendEmail = require("../utils/sendEmail");
-const User = require("../models/User");
 
+// controllers/tripController.js
 exports.createTrip = async (req, res) => {
   try {
     const tripData = {
@@ -12,10 +10,10 @@ exports.createTrip = async (req, res) => {
       totalSeats: Number(req.body.totalSeats),
       farePerSeat: Number(req.body.farePerSeat),
     };
-
+    // ✅ Parse location from JSON string
     if (req.body.location) {
       try {
-        tripData.location = JSON.parse(req.body.location);
+        tripData.location = JSON.parse(req.body.location); // Must be GeoJSON: { type: "Point", coordinates: [lng, lat], address: "..." }
       } catch (error) {
         console.warn("⚠️ Invalid location JSON:", req.body.location);
         return res.status(400).json({ message: "Invalid location format" });
@@ -23,10 +21,7 @@ exports.createTrip = async (req, res) => {
     }
 
     if (req.file && req.file.path) {
-      const uploaded = await cloudinary.uploader.upload(req.file.path, {
-        folder: "trip_vehicles",
-      });
-      tripData.image = uploaded.secure_url;
+      tripData.image = req.file.path;
     }
 
     const trip = await Trip.create(tripData);
@@ -39,15 +34,13 @@ exports.createTrip = async (req, res) => {
 
 exports.getTrips = async (req, res) => {
   try {
-    const trips = await Trip.find({ status: { $nin: ["cancelled"] } }).populate(
-      "driverId"
-    );
+    const trips = await Trip.find({ status: "available" }).populate("driverId");
     res.json(trips);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
-
+// Get all trips for the logged-in driver
 exports.getMyTrips = async (req, res) => {
   try {
     const trips = await Trip.find({ driverId: req.user._id }).sort({
@@ -59,6 +52,7 @@ exports.getMyTrips = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// controllers/tripController.js
 
 exports.getTripById = async (req, res) => {
   try {
@@ -76,7 +70,47 @@ exports.getTripById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// controllers/tripController.js
+exports.reserveSeat = async (req, res) => {
+  console.log("🛑 tripId received:", req.params.tripId);
 
+  try {
+    const { seats = 1 } = req.body;
+    const trip = await Trip.findById(req.params.tripId);
+
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    const alreadyReserved = trip.passengers.find(
+      (p) =>
+        p.user?.toString() === req.user._id.toString() &&
+        p.status !== "cancelled"
+    );
+    if (alreadyReserved)
+      return res.status(400).json({ message: "Already reserved" });
+
+    const reservedSeats = trip.passengers
+      .filter((p) => p.status !== "cancelled")
+      .reduce((sum, p) => sum + (p.seats || 1), 0);
+
+    const availableSeats = trip.totalSeats - reservedSeats;
+
+    if (availableSeats < seats)
+      return res.status(400).json({ message: "Not enough seats available" });
+
+    trip.passengers.push({ user: req.user._id, seats });
+
+    // ✅ Mark as booked if all seats filled
+    if (reservedSeats + seats >= trip.totalSeats) {
+      trip.status = "booked";
+    }
+
+    await trip.save();
+    res.json({ message: "Reserved", trip });
+  } catch (err) {
+    console.error("❌ Reserve failed:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 exports.updateTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
@@ -204,13 +238,14 @@ exports.cancelTrip = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
+// Cancel reservation
 exports.cancelReservation = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.tripId);
 
     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
+    // ✅ Check if trip starts within 24 hours
     const tripStart = new Date(`${trip.date}T${trip.time}`);
     const now = new Date();
     const diffHours = (tripStart - now) / (1000 * 60 * 60);
@@ -222,6 +257,7 @@ exports.cancelReservation = async (req, res) => {
       });
     }
 
+    // ✅ Find user’s reservation
     const index = trip.passengers.findIndex(
       (p) =>
         p.user?.toString() === req.user._id.toString() &&
@@ -231,13 +267,16 @@ exports.cancelReservation = async (req, res) => {
     if (index === -1)
       return res.status(400).json({ message: "No active reservation found" });
 
+    // ✅ Mark as cancelled
     trip.passengers[index].status = "cancelled";
     trip.passengers[index].cancelledAt = new Date();
 
+    // ✅ Recalculate seats
     const reservedSeatsAfterCancel = trip.passengers
       .filter((p) => p.status !== "cancelled")
       .reduce((sum, p) => sum + (p.seats || 1), 0);
 
+    // ✅ If seats now available, mark trip as 'available'
     if (
       trip.status === "booked" &&
       reservedSeatsAfterCancel < trip.totalSeats
@@ -254,97 +293,6 @@ exports.cancelReservation = async (req, res) => {
   }
 };
 
-exports.reserveSeat = async (req, res) => {
-  try {
-    const { tripId } = req.params;
-    const { seats = 1 } = req.body;
-
-    const trip = await Trip.findById(tripId).populate("driverId");
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
-
-    // Trip must be available
-    if (trip.status !== "available") {
-      return res.status(400).json({ message: "Trip is not available" });
-    }
-
-    // Prevent past bookings
-    const tripStart = new Date(`${trip.date}T${trip.time}`);
-    if (tripStart < new Date()) {
-      return res.status(400).json({ message: "Trip already departed" });
-    }
-
-    // Prevent duplicate booking
-    const alreadyReserved = trip.passengers.some(
-      (p) =>
-        p.user.toString() === req.user._id.toString() && p.status === "reserved"
-    );
-    if (alreadyReserved) {
-      return res
-        .status(400)
-        .json({ message: "You already reserved this trip" });
-    }
-
-    // Check seat availability
-    const reservedSeats = trip.passengers
-      .filter((p) => p.status === "reserved")
-      .reduce((sum, p) => sum + (p.seats || 1), 0);
-    const availableSeats = trip.totalSeats - reservedSeats;
-
-    if (seats > availableSeats) {
-      return res.status(400).json({
-        message: `Only ${availableSeats} seat(s) available`,
-      });
-    }
-
-    // Add reservation
-    trip.passengers.push({
-      user: req.user._id,
-      seats,
-      status: "reserved",
-      paymentStatus: "pending", // update to "paid" after SSLCOMMERZ success
-    });
-
-    if (reservedSeats + seats >= trip.totalSeats) {
-      trip.status = "booked";
-    }
-
-    await trip.save();
-
-    // Fetch passenger details
-    const passenger = await User.findById(req.user._id);
-
-    // Send confirmation email to passenger
-    if (passenger?.email) {
-      await sendEmail({
-        to: passenger.email,
-        subject: "Trip Reservation Confirmed",
-        html: `
-          <p>Hello ${passenger.name},</p>
-          <p>🎉 Your reservation for the trip from <b>${trip.from}</b> to <b>${
-          trip.to
-        }</b> on <b>${trip.date}</b> at <b>${
-          trip.time
-        }</b> has been confirmed.</p>
-          <p>Driver: <b>${trip.driverId.name}</b></p>
-          <p>Reserved Seats: <b>${seats}</b></p>
-          <p>Fare per Seat: ৳${trip.farePerSeat}</p>
-          <p>Total Fare: ৳${seats * trip.farePerSeat}</p>
-          <br/>
-          <p>Please complete the payment to confirm your seat.</p>
-          <p>Thanks for using BanglaBnB Rides!</p>
-        `,
-      });
-    }
-
-    res.status(200).json({
-      message: "✅ Trip reserved successfully and email sent",
-      trip,
-    });
-  } catch (err) {
-    console.error("❌ Reserve seat error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 exports.MyRides = async (req, res) => {
   console.log("UserId: ", req.user.id);
   try {
@@ -352,7 +300,7 @@ exports.MyRides = async (req, res) => {
       passengers: {
         $elemMatch: {
           user: req.user._id,
-          status: { $ne: "cancelled" },
+          status: { $ne: "cancelled" }, // ✅ skip cancelled
         },
       },
     })
@@ -383,12 +331,10 @@ exports.getSuggestedTrips = async (req, res) => {
             type: "Point",
             coordinates: [parseFloat(lng), parseFloat(lat)],
           },
-          $maxDistance: 100 * 1000,
+          $maxDistance: 100 * 1000, // 100 km
         },
       },
-    })
-      .sort({ date: 1, time: 1 })
-      .limit(5);
+    }).limit(5);
 
     res.json(trips);
   } catch (err) {
