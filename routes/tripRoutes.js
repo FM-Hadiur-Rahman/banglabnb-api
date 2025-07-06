@@ -13,6 +13,8 @@ const {
   MyRides,
   cancelReservation,
   getSuggestedTrips,
+  updateTrip, // ✅ Add this
+  cancelTrip,
 } = require("../controllers/tripController");
 
 // ✅ CREATE trip (with image upload)
