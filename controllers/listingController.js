@@ -104,8 +104,11 @@ exports.getAllListings = async (req, res) => {
     }
 
     if (type) match.type = type;
-    if (guests && guests !== "0" && !isNaN(guests)) {
-      match.maxGuests = { $gte: parseInt(guests) };
+    if (req.query.guests && !isNaN(req.query.guests)) {
+      const guestInt = parseInt(req.query.guests);
+      if (guestInt > 1) {
+        match.maxGuests = { $gte: guestInt };
+      }
     }
 
     if (minPrice || maxPrice) {
