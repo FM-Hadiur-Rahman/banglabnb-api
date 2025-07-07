@@ -123,6 +123,7 @@ const generateTripInvoice = async (
       doc.text(value, left, currentY, { align: "right", width });
       doc.moveDown(0.8);
     });
+    doc.moveDown(2); // before QR and signature section
 
     // QR
     await QRCode.toFile(
@@ -130,7 +131,7 @@ const generateTripInvoice = async (
       `https://banglabnb.com/my-rides?reservation=${reservation._id}`,
       { width: 100 }
     );
-    doc.image(qrPath, 450, doc.y - 30, { width: 80 });
+    doc.image(qrImage, 450, doc.y + 20, { width: 80 });
 
     // Signatures
     doc.moveDown(6).fontSize(12).fillColor("black");
