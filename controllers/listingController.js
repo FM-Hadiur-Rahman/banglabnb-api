@@ -94,13 +94,18 @@ exports.getAllListings = async (req, res) => {
 
     // ✅ Apply pagination after all filters
     const totalCount = listings.length;
-    const paginatedListings = listings.slice(skip, skip + limit);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // ✅ If requested page exceeds total pages, send empty
+    const safePage = page > totalPages ? totalPages : page;
+    const safeSkip = (safePage - 1) * limit;
+    const paginatedListings = listings.slice(safeSkip, safeSkip + limit);
 
     res.json({
       listings: paginatedListings,
       totalCount,
-      totalPages: Math.ceil(totalCount / limit),
-      currentPage: page,
+      totalPages,
+      currentPage: safePage,
     });
   } catch (err) {
     console.error("❌ Error filtering listings:", err);
