@@ -95,15 +95,14 @@ exports.getAllListings = async (req, res) => {
     // ✅ Add this after other $match stages (e.g., after tags filter)
     pipeline.push({
       $lookup: {
-        from: "users", // collection name
-        localField: "host",
+        from: "users",
+        localField: "hostId",
         foreignField: "_id",
         as: "host",
+        pipeline: [{ $project: { name: 1, avatar: 1, premium: 1 } }],
       },
     });
-    pipeline.push({
-      $unwind: "$host", // flatten array to object
-    });
+    pipeline.push({ $unwind: "$host" });
 
     // ✅ 5. Date-based booking exclusion
     if (from && to) {
