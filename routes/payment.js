@@ -414,5 +414,86 @@ router.post("/claim-refund", protect, async (req, res) => {
 
   res.json({ message: "Refund claim submitted" });
 });
+router.post("/premium", protect, async (req, res) => {
+  const user = req.user;
+
+  const tran_id = `PREMIUM_${user._id}_${Date.now()}`;
+
+  const data = {
+    store_id: process.env.SSLCOMMERZ_STORE_ID,
+    store_passwd: process.env.SSLCOMMERZ_STORE_PASS,
+    total_amount: 499,
+    currency: "BDT",
+    tran_id,
+    success_url: `${process.env.API_URL}/api/payment/premium-success`,
+    fail_url: "https://banglabnb.com/payment-fail",
+    cancel_url: "https://banglabnb.com/payment-cancel",
+    cus_name: user.name,
+    cus_email: user.email,
+    cus_add1: user.address || "Bangladesh",
+    cus_city: "Dhaka",
+    cus_postcode: "1200",
+    cus_country: "Bangladesh",
+    cus_phone: user.phone || "01700000000",
+    shipping_method: "NO",
+    product_name: "Premium Host Upgrade",
+    product_category: "Membership",
+    product_profile: "general",
+  };
+
+  try {
+    const response = await axios.post(
+      process.env.SSLCOMMERZ_API_URL,
+      qs.stringify(data),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    if (!response.data.GatewayPageURL) {
+      return res.status(400).json({ error: "Payment URL generation failed" });
+    }
+
+    res.json({ url: response.data.GatewayPageURL });
+  } catch (err) {
+    console.error("SSLCOMMERZ premium payment error:", err.message);
+    res.status(500).json({ error: "Payment initiation failed" });
+  }
+});
+router.post("/premium-success", async (req, res) => {
+  const { tran_id, val_id, amount } = req.body;
+
+  if (!tran_id?.startsWith("PREMIUM_")) {
+    return res.status(400).json({ message: "Invalid premium transaction" });
+  }
+
+  const userId = tran_id.split("_")[1];
+
+  try {
+    await User.findByIdAndUpdate(userId, {
+      premium: {
+        isPremium: true,
+        activatedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        paymentId: tran_id,
+        valId,
+        paidAmount: amount,
+      },
+    });
+
+    // Optionally send confirmation email
+    const user = await User.findById(userId);
+    await sendEmail({
+      to: user.email,
+      subject: "🎉 You're Now a Premium Host!",
+      html: `<p>Thank you for upgrading to Premium! Your premium listing boost is now active.</p>`,
+    });
+
+    return res.redirect("https://banglabnb.com/premium-success");
+  } catch (err) {
+    console.error("Premium activation error:", err.message);
+    res.status(500).send("Premium activation failed");
+  }
+});
 
 module.exports = router;
