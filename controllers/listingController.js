@@ -95,7 +95,10 @@ exports.getAllListings = async (req, res) => {
       match["location.address"] = { $regex: location, $options: "i" };
     }
     if (type) match.type = type;
-    if (guests) match.maxGuests = { $gte: parseInt(guests) };
+    if (guests && guests !== "0") {
+      match.maxGuests = { $gte: parseInt(guests) };
+    }
+
     if (minPrice || maxPrice) {
       match.price = {};
       if (minPrice) match.price.$gte = parseFloat(minPrice);
