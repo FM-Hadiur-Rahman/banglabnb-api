@@ -72,10 +72,10 @@ exports.getAllListings = async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    // 👉 Step 1: Get all listings (no pagination yet)
+    // Step 1: Get all matching listings
     let listings = await Listing.find(query);
 
-    // 👉 Step 2: Filter out listings that are booked for the given range
+    // Step 2: Filter by availability if date provided
     if (from && to) {
       const dateFrom = new Date(from);
       const dateTo = new Date(to);
@@ -92,7 +92,7 @@ exports.getAllListings = async (req, res) => {
       listings = listings.filter((l) => !bookedIds.includes(l._id.toString()));
     }
 
-    // 👉 Step 3: Apply pagination AFTER filtering
+    // ✅ Apply pagination after all filters
     const totalCount = listings.length;
     const paginatedListings = listings.slice(skip, skip + limit);
 
