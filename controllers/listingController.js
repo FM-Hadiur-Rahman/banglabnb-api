@@ -168,7 +168,7 @@ exports.getListingById = async (req, res) => {
     const listing = await Listing.findOne({
       _id: req.params.id,
       isDeleted: false,
-    }).populate("host", "name avatar premium");
+    }).populate("hostId", "name avatar premium");
 
     if (!listing) {
       return res.status(404).json({ message: "Listing not found" });
