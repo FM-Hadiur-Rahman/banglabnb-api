@@ -472,27 +472,28 @@ router.post("/premium-success", async (req, res) => {
   try {
     await User.findByIdAndUpdate(userId, {
       premium: {
-        isPremium: true,
-        activatedAt: new Date(),
+        isActive: true,
+        upgradedAt: new Date(),
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        paymentId: tran_id,
-        valId: val_id,
-        paidAmount: amount,
+        paymentInfo: {
+          transactionId: tran_id,
+          amount: Number(amount),
+        },
       },
     });
 
-    // Optionally send confirmation email
     const user = await User.findById(userId);
+
     await sendEmail({
       to: user.email,
       subject: "🎉 You're Now a Premium Host!",
-      html: `<p>Thank you for upgrading to Premium! Your premium listing boost is now active.</p>`,
+      html: `<p>Thank you for upgrading to Premium! Your premium listing boost is now active until <strong>${user.premium.expiresAt.toDateString()}</strong>.</p>`,
     });
 
-    res.redirect("https://banglabnb.com/dashboard/host?status=premium");
+    return res.redirect("https://banglabnb.com/dashboard/host?status=premium");
   } catch (err) {
     console.error("Premium activation error:", err.message);
-    res.status(500).send("Premium activation failed");
+    return res.status(500).send("Premium activation failed");
   }
 });
 
