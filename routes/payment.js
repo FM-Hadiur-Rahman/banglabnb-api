@@ -490,7 +490,7 @@ router.post("/premium-success", async (req, res) => {
       html: `<p>Thank you for upgrading to Premium! Your premium listing boost is now active until <strong>${user.premium.expiresAt.toDateString()}</strong>.</p>`,
     });
 
-    return res.redirect("https://banglabnb.com/dashboard/host?status=premium");
+    return res.redirect("https://banglabnb.com/host/dashboard?status=premium");
   } catch (err) {
     console.error("Premium activation error:", err.message);
     return res.status(500).send("Premium activation failed");
