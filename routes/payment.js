@@ -476,7 +476,7 @@ router.post("/premium-success", async (req, res) => {
         activatedAt: new Date(),
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         paymentId: tran_id,
-        valId,
+        valId: val_id,
         paidAmount: amount,
       },
     });
