@@ -53,10 +53,21 @@ const Booking = require("../models/Booking");
 // };
 exports.getAllListings = async (req, res) => {
   try {
-    const { location, from, to, guests, type, minPrice, maxPrice } = req.query;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12;
-    const skip = (page - 1) * limit;
+    const {
+      location,
+      from,
+      to,
+      guests,
+      type,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 12,
+    } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     const query = { isDeleted: false };
 
@@ -72,40 +83,34 @@ exports.getAllListings = async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    // Step 1: Get all matching listings
-    let listings = await Listing.find(query);
-
-    // Step 2: Filter by availability if date provided
+    // 📆 Date filtering: exclude booked listingIds
     if (from && to) {
       const dateFrom = new Date(from);
       const dateTo = new Date(to);
 
       const bookedIds = await Booking.find({
-        $or: [
-          {
-            dateFrom: { $lte: dateTo },
-            dateTo: { $gte: dateFrom },
-          },
-        ],
+        dateFrom: { $lte: dateTo },
+        dateTo: { $gte: dateFrom },
       }).distinct("listingId");
 
-      listings = listings.filter((l) => !bookedIds.includes(l._id.toString()));
+      if (bookedIds.length) {
+        query._id = { $nin: bookedIds };
+      }
     }
 
-    // ✅ Apply pagination after all filters
-    const totalCount = listings.length;
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalCount = await Listing.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limitNum);
 
-    // ✅ If requested page exceeds total pages, send empty
-    const safePage = page > totalPages ? totalPages : page;
-    const safeSkip = (safePage - 1) * limit;
-    const paginatedListings = listings.slice(safeSkip, safeSkip + limit);
+    const listings = await Listing.find(query)
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
 
     res.json({
-      listings: paginatedListings,
+      listings,
       totalCount,
       totalPages,
-      currentPage: safePage,
+      currentPage: pageNum,
     });
   } catch (err) {
     console.error("❌ Error filtering listings:", err);
