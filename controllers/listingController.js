@@ -72,9 +72,6 @@ exports.getAllListings = async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    const totalCount = await Listing.countDocuments(query);
-    let listings = await Listing.find(query).skip(skip).limit(limit);
-
     if (from && to) {
       const dateFrom = new Date(from);
       const dateTo = new Date(to);
@@ -90,7 +87,8 @@ exports.getAllListings = async (req, res) => {
 
       listings = listings.filter((l) => !bookedIds.includes(l._id.toString()));
     }
-
+    const totalCount = await Listing.countDocuments(query);
+    let listings = await Listing.find(query).skip(skip).limit(limit);
     res.json({
       listings,
       totalCount,
