@@ -92,6 +92,19 @@ exports.getAllListings = async (req, res) => {
       });
     }
 
+    // ✅ Add this after other $match stages (e.g., after tags filter)
+    pipeline.push({
+      $lookup: {
+        from: "users", // collection name
+        localField: "host",
+        foreignField: "_id",
+        as: "host",
+      },
+    });
+    pipeline.push({
+      $unwind: "$host", // flatten array to object
+    });
+
     // ✅ 5. Date-based booking exclusion
     if (from && to) {
       const dateFrom = new Date(from);
@@ -156,7 +169,7 @@ exports.getListingById = async (req, res) => {
     const listing = await Listing.findOne({
       _id: req.params.id,
       isDeleted: false,
-    });
+    }).populate("host", "name avatar premium");
 
     if (!listing) {
       return res.status(404).json({ message: "Listing not found" });
