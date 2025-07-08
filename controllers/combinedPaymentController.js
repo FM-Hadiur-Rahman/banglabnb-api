@@ -161,21 +161,38 @@ exports.combinedPaymentSuccess = async (req, res) => {
 
     // Step 6: Create Driver Payout (for Ride)
     if (trip?.driverId) {
-      const seats = booking.seats || 1; // optional fallback
+      const seats = booking.seats || 1; // fallback to 1
       const subtotal = trip.price * seats;
-      const serviceFee = subtotal * 0.1;
-      const vat = serviceFee * 0.15;
-      const driverPayout = subtotal - serviceFee;
 
-      await DriverPayout.create({
-        tripId: trip._id,
-        driverId: trip.driverId,
-        amount: driverPayout,
-        serviceFee,
-        vat,
-        method: "manual",
-        status: "pending",
-      });
+      const serviceFee = Math.round(subtotal * 0.1); // 10% platform fee
+      const vat = Math.round(serviceFee * 0.15); // 15% VAT on fee
+      const driverPayout = subtotal - serviceFee; // Driver gets subtotal minus fee
+
+      // ✅ Ensure values are numbers
+      if (
+        isNaN(subtotal) ||
+        isNaN(serviceFee) ||
+        isNaN(vat) ||
+        isNaN(driverPayout)
+      ) {
+        console.error("❌ Invalid payout calculation", {
+          seats,
+          subtotal,
+          serviceFee,
+          vat,
+          driverPayout,
+        });
+      } else {
+        await DriverPayout.create({
+          tripId: trip._id,
+          driverId: trip.driverId,
+          amount: driverPayout,
+          serviceFee,
+          vat,
+          method: "manual", // Or sslcommerz if auto payout
+          status: "pending",
+        });
+      }
 
       const driver = await User.findById(trip.driverId);
       if (driver?.email) {
