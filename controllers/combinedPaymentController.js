@@ -1,4 +1,5 @@
-require("dotenv").config();
+const dayjs = require("dayjs");
+
 const Booking = require("../models/Booking");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
@@ -9,6 +10,7 @@ const qs = require("qs");
 const axios = require("axios");
 const Payout = require("../models/Payout");
 const DriverPayout = require("../models/DriverPayout");
+require("dotenv").config();
 
 exports.initiateCombinedPayment = async (req, res) => {
   const { bookingId, amount, customer } = req.body;
