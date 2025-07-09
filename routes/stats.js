@@ -25,11 +25,25 @@ router.get("/host/:id", protect, async (req, res) => {
   try {
     const [earningsData, reviewsData] = await Promise.all([
       Booking.aggregate([
-        { $match: { hostId } },
+        {
+          $lookup: {
+            from: "listings",
+            localField: "listingId",
+            foreignField: "_id",
+            as: "listing",
+          },
+        },
+        { $unwind: "$listing" },
+        {
+          $match: {
+            "listing.hostId": hostId,
+            paymentStatus: "paid",
+          },
+        },
         {
           $group: {
             _id: { $month: "$dateFrom" },
-            total: { $sum: "$totalPrice" },
+            total: { $sum: "$paidAmount" },
           },
         },
         { $sort: { _id: 1 } },

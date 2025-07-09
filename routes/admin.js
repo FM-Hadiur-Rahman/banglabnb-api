@@ -336,8 +336,6 @@ router.put(
   }
 );
 
-module.exports = router;
-
 // === Payout Management ===
 
 // === Miscellaneous Stats ===
@@ -887,3 +885,4 @@ router.get("/trips/:id", protect, authorize("admin"), async (req, res) => {
   if (!trip) return res.status(404).json({ message: "Trip not found" });
   res.json(trip);
 });
+module.exports = router;
