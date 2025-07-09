@@ -328,6 +328,14 @@ router.put(
         { status: "paid", date: new Date() },
         { new: true }
       );
+
+      // 🛠 Also update the booking record
+      if (payout?.bookingId) {
+        await Booking.findByIdAndUpdate(payout.bookingId, {
+          payoutIssued: true,
+        });
+      }
+
       res.json({ message: "✅ Payout marked as paid", payout });
     } catch (err) {
       console.error("❌ Failed to update payout:", err);
