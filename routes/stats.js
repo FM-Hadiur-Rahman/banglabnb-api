@@ -51,7 +51,7 @@ router.get("/host/:id", protect, async (req, res) => {
       const monthData = earningsData.find((m) => m._id === i + 1);
       return {
         month: name,
-        total: monthData ? monthData.total : 0,
+        amount: monthData ? monthData.total : 0, // ✅ renamed to amount
       };
     });
 
