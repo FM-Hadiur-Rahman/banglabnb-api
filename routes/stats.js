@@ -49,7 +49,20 @@ router.get("/host/:id", protect, async (req, res) => {
         { $sort: { _id: 1 } },
       ]),
       Review.aggregate([
-        { $match: { hostId } },
+        {
+          $lookup: {
+            from: "listings",
+            localField: "listingId",
+            foreignField: "_id",
+            as: "listing",
+          },
+        },
+        { $unwind: "$listing" },
+        {
+          $match: {
+            "listing.hostId": hostId,
+          },
+        },
         {
           $group: {
             _id: { $month: "$createdAt" },
