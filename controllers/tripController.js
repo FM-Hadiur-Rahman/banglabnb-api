@@ -59,12 +59,14 @@ exports.createTrip = async (req, res) => {
 // GET /api/trips?fromLat=...&fromLng=...&toLat=...&toLng=...&date=...
 exports.getTrips = async (req, res) => {
   try {
+    console.log("🔍 Incoming trip search params:", req.query);
+
     const { fromLat, fromLng, toLat, toLng, date, radius = 30000 } = req.query;
 
     const query = { status: "available" };
 
-    // 🌍 Geo-based FROM location
-    if (fromLat && fromLng) {
+    // Validate coordinates before using
+    if (fromLat && fromLng && !isNaN(fromLat) && !isNaN(fromLng)) {
       query["fromLocation.coordinates"] = {
         $near: {
           $geometry: {
@@ -76,8 +78,7 @@ exports.getTrips = async (req, res) => {
       };
     }
 
-    // 🌍 Geo-based TO location
-    if (toLat && toLng) {
+    if (toLat && toLng && !isNaN(toLat) && !isNaN(toLng)) {
       query["toLocation.coordinates"] = {
         $near: {
           $geometry: {
@@ -89,25 +90,25 @@ exports.getTrips = async (req, res) => {
       };
     }
 
-    // 🔍 Fuzzy fallback for text-based search
     if (!fromLat && req.query.from) {
-      query.from = new RegExp(req.query.from, "i"); // case-insensitive
+      query.from = new RegExp(req.query.from, "i");
     }
 
     if (!toLat && req.query.to) {
       query.to = new RegExp(req.query.to, "i");
     }
 
-    // 📅 Optional date filter
     if (date) {
       query.date = date;
     }
+
+    console.log("🧠 Final trip search query:", JSON.stringify(query, null, 2));
 
     const trips = await Trip.find(query).populate("driverId");
     res.json(trips);
   } catch (err) {
     console.error("❌ Trip search failed:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
