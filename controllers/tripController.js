@@ -543,14 +543,29 @@ exports.markTripCompleted = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
 
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
 
-    if (trip.driverId.toString() !== req.user._id.toString())
-      return res.status(403).json({ message: "Unauthorized" });
+    if (trip.driverId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized: Not your trip" });
+    }
 
-    const tripTime = new Date(`${trip.date}T${trip.time}`);
-    if (tripTime > new Date()) {
-      return res.status(400).json({ message: "Trip hasn't started yet" });
+    const tripDateTime = new Date(`${trip.date}T${trip.time}`);
+    const now = new Date();
+
+    if (tripDateTime > now) {
+      return res
+        .status(400)
+        .json({
+          message: "Trip hasn't started yet. Cannot mark as completed.",
+        });
+    }
+
+    if (trip.isCompleted) {
+      return res
+        .status(400)
+        .json({ message: "Trip is already marked as completed." });
     }
 
     trip.isCompleted = true;
@@ -558,10 +573,11 @@ exports.markTripCompleted = async (req, res) => {
 
     res.json({ message: "✅ Trip marked as completed", trip });
   } catch (err) {
-    console.error("❌ Mark completed failed:", err);
+    console.error("❌ Mark trip as completed failed:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 // GET /api/trips/:id/passengers
 exports.getTripPassengers = async (req, res) => {
   try {
