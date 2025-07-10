@@ -326,6 +326,35 @@ exports.updateTrip = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// controllers/tripController.js
+
+exports.deleteTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    // Optional: only allow the trip owner (driver) to delete
+    if (trip.driver.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Optional: Prevent deleting if there are active reservations
+    const hasActiveReservations = trip.passengers?.some(
+      (p) => p.status !== "cancelled"
+    );
+    if (hasActiveReservations) {
+      return res.status(400).json({ message: "Trip has active reservations" });
+    }
+
+    await Trip.findByIdAndDelete(req.params.id);
+    res.json({ message: "Trip deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting trip:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 exports.cancelTrip = async (req, res) => {
   try {
@@ -567,9 +596,9 @@ exports.getDriverStats = async (req, res) => {
     const cancelled = trips.filter((t) => t.status === "cancelled").length;
 
     const totalEarnings = trips.reduce((sum, trip) => {
-      const earnings = trip.passengers
-        .filter((p) => p.status === "reserved" && p.paymentStatus === "paid")
-        .reduce((s, p) => s + p.seats * trip.farePerSeat, 0);
+      const earnings = trip.passengers.reduce((s, p) => {
+        return s + (p.seats || 1) * (trip.farePerSeat || 0);
+      }, 0);
       return sum + earnings;
     }, 0);
 
