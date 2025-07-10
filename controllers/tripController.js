@@ -3,6 +3,7 @@ const Trip = require("../models/Trip");
 const cloudinary = require("../middleware/cloudinaryUpload");
 const User = require("../models/User");
 const sendEmail = require("../utils/sendEmail");
+const geolib = require("geolib");
 // controllers/tripController.js
 exports.createTrip = async (req, res) => {
   try {
@@ -61,12 +62,30 @@ exports.getTrips = async (req, res) => {
   try {
     console.log("🔍 Incoming trip search params:", req.query);
 
-    const { fromLat, fromLng, toLat, toLng, date, radius = 30000 } = req.query;
+    const {
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+      from,
+      to,
+      date,
+      radius = 30000,
+    } = req.query;
 
-    const query = { status: "available" };
+    const query = {
+      status: "available",
+    };
 
-    // Validate coordinates before using
-    if (fromLat && fromLng && !isNaN(fromLat) && !isNaN(fromLng)) {
+    // Add date filter
+    if (date) query.date = date;
+
+    // Add text match fallback if no coords
+    if (!fromLat && from) query.from = new RegExp(from, "i");
+    if (!toLat && to) query.to = new RegExp(to, "i");
+
+    // Add geo query for fromLocation only
+    if (!isNaN(fromLat) && !isNaN(fromLng)) {
       query["fromLocation.coordinates"] = {
         $near: {
           $geometry: {
@@ -78,34 +97,28 @@ exports.getTrips = async (req, res) => {
       };
     }
 
-    if (toLat && toLng && !isNaN(toLat) && !isNaN(toLng)) {
-      query["toLocation.coordinates"] = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(toLng), parseFloat(toLat)],
-          },
-          $maxDistance: parseFloat(radius),
-        },
-      };
+    console.log("🧠 MongoDB query (only fromLocation):", JSON.stringify(query));
+
+    // Step 1: query by fromLocation and other filters
+    const trips = await Trip.find(query).populate("driverId").lean();
+
+    // Step 2: optionally filter by toLocation using JS if toLat/toLng present
+    let filteredTrips = trips;
+    if (!isNaN(toLat) && !isNaN(toLng)) {
+      filteredTrips = trips.filter((trip) => {
+        const toCoords = trip?.toLocation?.coordinates;
+        if (!toCoords || toCoords.length !== 2) return false;
+
+        const distance = geolib.getDistance(
+          { latitude: parseFloat(toLat), longitude: parseFloat(toLng) },
+          { latitude: toCoords[1], longitude: toCoords[0] }
+        );
+
+        return distance <= parseFloat(radius);
+      });
     }
 
-    if (!fromLat && req.query.from) {
-      query.from = new RegExp(req.query.from, "i");
-    }
-
-    if (!toLat && req.query.to) {
-      query.to = new RegExp(req.query.to, "i");
-    }
-
-    if (date) {
-      query.date = date;
-    }
-
-    console.log("🧠 Final trip search query:", JSON.stringify(query, null, 2));
-
-    const trips = await Trip.find(query).populate("driverId");
-    res.json(trips);
+    res.json(filteredTrips);
   } catch (err) {
     console.error("❌ Trip search failed:", err);
     res.status(500).json({ message: "Server error", error: err.message });
