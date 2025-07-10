@@ -15,6 +15,7 @@ const {
   getSuggestedTrips,
   updateTrip, // ✅ Add this
   cancelTrip,
+  deleteTrip,
   markTripCompleted, // ✅ New
   getTripEarnings, // ✅ New
   getDriverStats, // ✅ New
@@ -49,7 +50,7 @@ router.post("/:tripId/reserve", protect, reserveSeat);
 router.post("/:tripId/cancel", protect, cancelReservation);
 router.put("/:id", protect, upload.single("image"), updateTrip);
 router.put("/:id/cancel", protect, cancelTrip);
-router.delete("/trips/:id", protect, tripCtrl.deleteTrip);
+router.delete("/trips/:id", protect, deleteTrip);
 
 // ✅ View all passengers for a specific trip
 router.get("/:id/passengers", protect, authorize("driver"), getTripPassengers);
