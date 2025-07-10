@@ -4,6 +4,7 @@ const cloudinary = require("../middleware/cloudinaryUpload");
 const User = require("../models/User");
 const sendEmail = require("../utils/sendEmail");
 const geolib = require("geolib");
+const DriverPayout = require("../models/DriverPayout");
 // controllers/tripController.js
 exports.createTrip = async (req, res) => {
   try {
@@ -486,24 +487,22 @@ exports.getSuggestedTrips = async (req, res) => {
 // controllers/tripController.js
 exports.getTripEarnings = async (req, res) => {
   try {
-    const trips = await Trip.find({ driverId: req.user._id });
+    const payouts = await DriverPayout.find({
+      driverId: req.user._id,
+      status: "paid",
+    }).populate("tripId", "from to date time totalSeats"); // 👈 populate trip info
 
-    const detailed = trips.map((trip) => {
-      const earnings = trip.passengers
-        .filter((p) => p.status === "reserved" && p.paymentStatus === "paid")
-        .reduce((sum, p) => sum + p.seats * trip.farePerSeat, 0);
-      return {
-        tripId: trip._id,
-        from: trip.from,
-        to: trip.to,
-        date: trip.date,
-        time: trip.time,
-        totalSeats: trip.totalSeats,
-        earnings,
-      };
-    });
+    const detailed = payouts.map((p) => ({
+      tripId: p.tripId._id,
+      from: p.tripId.from,
+      to: p.tripId.to,
+      date: p.tripId.date,
+      time: p.tripId.time,
+      totalSeats: p.tripId.totalSeats,
+      earnings: p.amount,
+    }));
 
-    const totalEarnings = detailed.reduce((sum, t) => sum + t.earnings, 0);
+    const totalEarnings = detailed.reduce((sum, p) => sum + p.earnings, 0);
 
     res.json({ totalEarnings, trips: detailed });
   } catch (err) {
