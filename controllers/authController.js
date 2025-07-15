@@ -248,7 +248,9 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone || "",
         avatar: user.avatar || "",
-        role: user.role,
+        role: user.primaryRole, // ✅ important for compatibility
+        primaryRole: user.primaryRole,
+        roles: user.roles || [],
         isVerified: user.isVerified,
         referralCode: user.referralCode || "",
       },
@@ -312,21 +314,25 @@ exports.resetPassword = async (req, res) => {
 };
 
 // PATCH /api/auth/switch-role
+// PATCH /api/auth/switch-role
 exports.switchRole = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+  const { role } = req.body;
+  const user = await User.findById(req.user.id);
 
-    user.role = user.role === "user" ? "host" : "user";
+  if (!user) return res.status(404).json({ message: "User not found" });
 
-    await user.save({ validateBeforeSave: false }); // ✅ Skip full validation
-
-    res.json({ message: "Role switched", newRole: user.role });
-  } catch (error) {
-    console.error("Role switch error:", error);
-    res.status(500).json({ message: "Something went wrong" });
+  if (!user.roles.includes(role)) {
+    return res
+      .status(403)
+      .json({ message: "You don't have access to this role" });
   }
+
+  user.primaryRole = role;
+  await user.save({ validateBeforeSave: false });
+
+  res.json({ message: "Role switched", newRole: role });
 };
+
 exports.getUserIdFromToken = async (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(400).json({ message: "Token is required" });
