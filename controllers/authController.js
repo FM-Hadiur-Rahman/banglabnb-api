@@ -32,7 +32,7 @@ exports.registerStep1 = async (req, res) => {
       referralCode,
       agreedToTerms,
     } = req.body;
-
+    const { division, district } = location || {};
     if (!name || !email || !password || !phone || !division || !district) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -86,7 +86,7 @@ exports.registerStep1 = async (req, res) => {
       to: email,
       subject: "Verify your BanglaBnB account",
       html: `<h2>Hi ${name},</h2>
-        <p>Thanks for signing up as a ${role}.</p>
+        <p>Thanks for signing up as a ${primaryRole}.</p>
         <p>Please verify your email:</p>
         <a href="${verifyUrl}">🌐 Verify via Web</a><br/>
         <a href="banglabnbmobile://verify-email?token=${rawToken}">📱 Open in App</a>`,
