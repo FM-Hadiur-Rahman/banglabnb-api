@@ -25,12 +25,12 @@ exports.registerStep1 = async (req, res) => {
       phone,
       primaryRole,
       roles,
-      division,
-      district,
+      location,
       drivingLicense,
       vehicleType,
       seatsOffered,
       referralCode,
+      agreedToTerms,
     } = req.body;
 
     if (!name || !email || !password || !phone || !division || !district) {
@@ -63,10 +63,7 @@ exports.registerStep1 = async (req, res) => {
       phone,
       primaryRole,
       roles,
-      location: {
-        division,
-        district,
-      },
+      location,
       isVerified: false,
       verificationToken: hashedToken,
       verificationTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour
