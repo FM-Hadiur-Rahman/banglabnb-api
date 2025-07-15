@@ -23,7 +23,8 @@ exports.registerStep1 = async (req, res) => {
       email,
       password,
       phone,
-      role,
+      primaryRole,
+      roles,
       division,
       district,
       drivingLicense,
@@ -60,7 +61,8 @@ exports.registerStep1 = async (req, res) => {
       email,
       password,
       phone,
-      role,
+      primaryRole,
+      roles,
       location: {
         division,
         district,
@@ -71,8 +73,8 @@ exports.registerStep1 = async (req, res) => {
       identityVerified: false,
       signupStep: 1,
       referredBy,
-      ...(role === "driver" && {
-        driverInfo: {
+      ...(primaryRole === "driver" && {
+        driver: {
           drivingLicense,
           vehicleType,
           seatsOffered,
