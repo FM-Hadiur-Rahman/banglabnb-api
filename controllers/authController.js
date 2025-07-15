@@ -248,11 +248,10 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone || "",
         avatar: user.avatar || "",
-        role: user.primaryRole, // ✅ important for compatibility
-        primaryRole: user.primaryRole,
-        roles: user.roles || [],
         isVerified: user.isVerified,
         referralCode: user.referralCode || "",
+        primaryRole: user.primaryRole,
+        roles: user.roles,
       },
       token: generateToken(user),
     });
