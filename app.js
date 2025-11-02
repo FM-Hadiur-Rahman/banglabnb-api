@@ -111,7 +111,11 @@ app.use("/api/promocode", require("./routes/promocode"));
 app.use("/api/config", require("./routes/config"));
 
 app.use((err, req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://banglabnb.com");
+  res.header(
+    "Access-Control-Allow-Origin",
+    "https://routeroof.com",
+    "https://banglabnb.com"
+  );
   res.header("Access-Control-Allow-Credentials", "true");
   res.status(500).json({ message: "Internal Server Error" });
 });
