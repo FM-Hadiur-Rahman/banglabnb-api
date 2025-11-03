@@ -30,80 +30,40 @@
 // module.exports = sendEmail;
 
 // server/utils/sendEmail.js
+
 require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
-
 const enabled = String(process.env.EMAIL_ENABLED).toLowerCase() === "true";
 
-if (enabled) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  // Optional: keep data in EU region if you enabled an EU subuser
-  // sgMail.setDataResidency('eu');
+if (enabled) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+function parseFrom() {
+  // FROM_EMAIL can be "BanglaBnB <routeroof@gmail.com>" or just "routeroof@gmail.com"
+  const m = /^(.*)<\s*(.+@[^>]+)\s*>$/.exec(process.env.FROM_EMAIL || "");
+  if (m) return { name: m[1].trim().replace(/"|'/g, ""), email: m[2].trim() };
+  return { email: (process.env.FROM_EMAIL || "").trim(), name: undefined };
 }
 
-/**
- * sendEmail({ to, subject, html, attachments })
- * - same shape you already use in controllers
- * - attachments (optional): [{ filename, path | content, type }]
- *   If using 'path', we will read & base64 for SendGrid automatically.
- */
-const fs = require("fs");
+module.exports = async function sendEmail({ to, subject, html, attachments }) {
+  if (!enabled) return { skipped: true };
 
-async function toSendGridAttachments(att) {
-  if (!att || !att.length) return undefined;
-  // Nodemailer allowed {path}; SendGrid needs base64 'content'
-  const items = await Promise.all(
-    att.map(async (a) => {
-      if (a.content) {
-        return {
-          filename: a.filename,
-          type: a.type || "application/octet-stream",
-          disposition: "attachment",
-          content: Buffer.isBuffer(a.content)
-            ? a.content.toString("base64")
-            : Buffer.from(String(a.content)).toString("base64"),
-        };
-      }
-      if (a.path) {
-        const buf = await fs.promises.readFile(a.path);
-        return {
-          filename: a.filename || a.path.split("/").pop(),
-          type: a.type || "application/octet-stream",
-          disposition: "attachment",
-          content: buf.toString("base64"),
-        };
-      }
-      return null;
-    })
-  );
-  return items.filter(Boolean);
-}
-
-async function sendEmail({ to, subject, html, attachments }) {
-  if (!enabled) {
-    console.warn("EMAIL_ENABLED is false; skipping email:", { to, subject });
-    return { skipped: true };
-  }
-
+  const from = parseFrom(); // <- verified sender!
   const msg = {
     to,
-    from: process.env.FROM_EMAIL, // must be a verified sender in SendGrid
-    subject,
+    from, // { email, name }
+    subject: subject || "(no subject)",
     html: html || "",
-    text: "",
-    attachments: await toSendGridAttachments(attachments),
   };
 
   try {
     const [res] = await sgMail.send(msg);
-    console.log(`📧 Email sent to ${to} (status ${res.statusCode})`);
+    console.log(`📧 SendGrid OK (${res.statusCode}) → ${to}`);
     return res;
   } catch (err) {
-    // Helpful debug info
-    const body = err.response && err.response.body ? err.response.body : err;
-    console.error("❌ Failed to send email via SendGrid:", body);
+    console.error(
+      "❌ SendGrid error detail:",
+      JSON.stringify(err.response?.body || err, null, 2)
+    );
     throw err;
   }
-}
-
-module.exports = sendEmail;
+};
