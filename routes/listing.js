@@ -46,11 +46,12 @@
 
 // module.exports = router;
 
+// routes/listing.js
 const express = require("express");
 const router = express.Router();
 
 const listingCtrl = require("../controllers/listingController");
-const protect = require("../middleware/protect"); // make sure this loads a FRESH user
+const protect = require("../middleware/protect");
 const authorize = require("../middleware/authorize");
 const {
   ensureHostReadyForListing,
@@ -62,8 +63,6 @@ const upload = multer({ storage, limits: { files: 10 } });
 
 // ---- Public
 router.get("/featured", listingCtrl.getFeaturedListings);
-
-// IMPORTANT: put more specific route BEFORE "/:id"
 router.get("/host/:hostId", listingCtrl.getListingsByHost);
 router.get("/", listingCtrl.getAllListings);
 router.get("/:id", listingCtrl.getListingById);
@@ -71,9 +70,9 @@ router.get("/:id", listingCtrl.getListingById);
 // ---- Protected CRUD
 router.post(
   "/",
-  protect, // attaches fresh req.user
-  ensureHostReadyForListing, // checks roles/kyc/identity/phone/payout, returns precise 403s
-  upload.array("images", 10), // only run if allowed
+  protect,
+  ensureHostReadyForListing,
+  upload.array("images", 10),
   listingCtrl.createListing
 );
 
@@ -93,7 +92,7 @@ router.delete(
   listingCtrl.unblockDates
 );
 
-// You probably want this protected too (or remove in production)
+// (Optional utility)
 router.post("/upload", protect, upload.single("image"), (req, res) => {
   res.json({ imageUrl: req.file.path });
 });
