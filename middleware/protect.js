@@ -63,7 +63,6 @@ module.exports = async function protect(req, res, next) {
     // switch this .select(...) line to the commented "+" version below.
     const user = await User.findById(decoded.id)
       .select([
-        "-password",
         "name",
         "email",
         "phone",
