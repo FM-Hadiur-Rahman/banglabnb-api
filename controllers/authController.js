@@ -252,6 +252,9 @@ exports.loginUser = async (req, res) => {
         primaryRole: user.primaryRole,
         roles: user.roles,
         kyc: user.kyc || null,
+        phoneVerified: user.phoneVerified || false,
+        identityVerified: user.identityVerified || false,
+        paymentDetails: { verified: user.paymentDetails?.verified || false },
       },
       token: generateToken(user),
     });

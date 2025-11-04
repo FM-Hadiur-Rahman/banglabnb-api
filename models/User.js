@@ -1,13 +1,12 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const { Select } = require("@headlessui/react");
 
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true, Select: false },
+    password: { type: String, required: true, select: false },
     phone: {
       type: String,
       required: true,
