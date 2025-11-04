@@ -36,7 +36,7 @@ const sgMail = require("@sendgrid/mail");
 const enabled = String(process.env.EMAIL_ENABLED).toLowerCase() === "true";
 
 if (enabled) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-sgMail.setDataResidency("eu");
+
 function parseFrom() {
   // FROM_EMAIL can be "BanglaBnB <routeroof@gmail.com>" or just "routeroof@gmail.com"
   const m = /^(.*)<\s*(.+@[^>]+)\s*>$/.exec(process.env.FROM_EMAIL || "");
