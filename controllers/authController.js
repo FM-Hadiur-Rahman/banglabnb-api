@@ -221,7 +221,10 @@ exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // IMPORTANT: select the password hash explicitly
+    const user = await User.findOne({ email }).select(
+      "+password +roles +primaryRole +kyc.status"
+    );
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
