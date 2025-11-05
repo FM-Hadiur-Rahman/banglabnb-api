@@ -9,9 +9,33 @@ const { cloudinary } = require("../config/cloudinary"); // adjust the path if ne
 
 exports.getMe = async (req, res) => {
   try {
-    const user = req.user; // `protect` middleware already sets this
-    res.status(200).json({ user });
+    const fresh = await User.findById(req.userId)
+      .select([
+        "name",
+        "email",
+        "phone",
+        "avatar",
+        "isVerified",
+        "phoneVerified",
+        "identityVerified",
+        "primaryRole",
+        "roles",
+        "kyc.status",
+        "paymentDetails.verified",
+      ])
+      .lean();
+
+    if (!fresh) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({
+      user: {
+        ...fresh,
+        paymentDetails: { verified: Boolean(fresh.paymentDetails?.verified) },
+        kyc: fresh.kyc || null,
+      },
+    });
   } catch (err) {
+    console.error("getMe error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
