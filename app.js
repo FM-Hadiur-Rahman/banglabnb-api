@@ -35,6 +35,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      "https://reivio.com",
       "https://routeroof.com",
       "https://banglabnb.com",
       "http://localhost:8081", // Expo web
