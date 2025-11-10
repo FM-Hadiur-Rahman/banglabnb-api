@@ -401,6 +401,78 @@ exports.getStats = async (req, res) => {
     res.status(500).json({ message: "Failed to load stats" });
   }
 };
+/* ===================== MONTHLY REVIEWS & EARNINGS STATS ===================== */
+exports.getMonthlyReviews = async (req, res) => {
+  try {
+    let matchStage = {};
+
+    // If host, filter reviews for their own listings
+    if (req.user.primaryRole === "host") {
+      const listings = await Listing.find({ hostId: req.user._id }).select(
+        "_id"
+      );
+      const listingIds = listings.map((l) => l._id);
+      matchStage.listingId = { $in: listingIds };
+    }
+
+    const data = await Review.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const result = data.map((item) => ({
+      month: item._id,
+      count: item.count,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Failed to get review stats:", err);
+    res.status(500).json([]);
+  }
+};
+
+exports.getMonthlyEarnings = async (req, res) => {
+  try {
+    let matchStage = { paymentStatus: "paid" };
+
+    // If host, only include bookings from their listings
+    if (req.user.primaryRole === "host") {
+      const listings = await Listing.find({ hostId: req.user._id }).select(
+        "_id"
+      );
+      const listingIds = listings.map((l) => l._id);
+      matchStage.listingId = { $in: listingIds };
+    }
+
+    const data = await Booking.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          amount: { $sum: "$paidAmount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const result = data.map((item) => ({
+      month: item._id,
+      amount: item.amount,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Failed to get earnings stats:", err);
+    res.status(500).json([]);
+  }
+};
 
 /* ===================== PAYOUTS ===================== */
 exports.getPendingPayouts = async (req, res) => {
