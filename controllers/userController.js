@@ -133,29 +133,60 @@ exports.updatePaymentDetails = async (req, res) => {
     res.status(500).json({ message: "Failed to update payment details" });
   }
 };
-
 /* ---------------- payment details: verify (admin) ---------------- */
-// attach this to an admin-only route like PATCH /api/admin/users/:id/payment-verify
 exports.verifyPaymentDetails = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { verified = true, note = "" } = req.body;
+    const { userId } = req.params;
+    const { status, reason } = req.body; // 'approved' | 'rejected'
+    if (!["approved", "rejected"].includes(status))
+      return res.status(400).json({ message: "Invalid status" });
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          "paymentDetails.verified": !!verified,
-          ...(note ? { "paymentDetails.note": String(note) } : {}),
-        },
-      },
-      { new: true, runValidators: true }
-    ).select("-password");
-
+    const user = await User.findById(userId).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
-    return res.json({ ok: true, user });
+    if (!user.paymentDetails) user.paymentDetails = {};
+
+    user.paymentDetails.status = status;
+    user.paymentDetails.reviewReason =
+      status === "rejected" ? reason || "Not specified" : undefined;
+    user.paymentDetails.reviewedBy = req.user._id;
+    user.paymentDetails.reviewedAt = new Date();
+
+    await user.save();
+
+    // (optional) sendEmail({ to: user.email, ... })
+
+    res.json({
+      message: `Payout account ${status}`,
+      paymentDetails: user.paymentDetails,
+    });
   } catch (err) {
     console.error("❌ Verify payment failed:", err);
     res.status(500).json({ message: "Failed to verify payment details" });
   }
 };
+
+/* ---------------- payment details: verify (admin) ---------------- */
+// attach this to an admin-only route like PATCH /api/admin/users/:id/payment-verify
+// exports.verifyPaymentDetails = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { verified = true, note = "" } = req.body;
+
+//     const user = await User.findByIdAndUpdate(
+//       id,
+//       {
+//         $set: {
+//           "paymentDetails.verified": !!verified,
+//           ...(note ? { "paymentDetails.note": String(note) } : {}),
+//         },
+//       },
+//       { new: true, runValidators: true }
+//     ).select("-password");
+
+//     if (!user) return res.status(404).json({ message: "User not found" });
+//     return res.json({ ok: true, user });
+//   } catch (err) {
+//     console.error("❌ Verify payment failed:", err);
+//     res.status(500).json({ message: "Failed to verify payment details" });
+//   }
+// };
