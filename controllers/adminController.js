@@ -630,3 +630,56 @@ exports.getTripById = async (req, res) => {
   if (!trip) return res.status(404).json({ message: "Trip not found" });
   res.json(trip);
 };
+
+/* ===================== EXPORT SEARCH RESULTS ===================== */
+exports.exportSearch = async (req, res) => {
+  try {
+    const { query, type, token } = req.query;
+    if (!query || !type || !token)
+      return res.status(400).send("Missing params");
+
+    const jwt = require("jsonwebtoken");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const admin = await User.findById(decoded.id);
+    if (!admin || admin.primaryRole !== "admin")
+      return res.status(403).send("Forbidden");
+
+    const regex = new RegExp(query, "i");
+
+    // You can choose to export only users here
+    const users = await User.find({
+      $or: [{ name: regex }, { email: regex }],
+    }).select("name email primaryRole isVerified");
+
+    if (type === "csv") {
+      const fields = ["name", "email", "primaryRole", "isVerified"];
+      const parser = new Parser({ fields });
+      const csv = parser.parse(users);
+      res.header("Content-Type", "text/csv");
+      res.attachment("search_results.csv");
+      return res.send(csv);
+    }
+
+    if (type === "pdf") {
+      const doc = new PDFDocument();
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=search_results.pdf"
+      );
+      doc.pipe(res);
+      doc.fontSize(18).text("Search Results", { underline: true });
+      users.forEach((u) => {
+        doc.moveDown();
+        doc.text(`Name: ${u.name}`);
+        doc.text(`Email: ${u.email}`);
+        doc.text(`Role: ${u.primaryRole}`);
+        doc.text(`Verified: ${u.isVerified ? "Yes" : "No"}`);
+      });
+      doc.end();
+    }
+  } catch (err) {
+    console.error("❌ Export search failed:", err);
+    res.status(500).send("Export failed");
+  }
+};
