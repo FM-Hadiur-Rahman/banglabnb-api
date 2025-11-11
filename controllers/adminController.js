@@ -286,6 +286,7 @@ exports.adminVerifyPaymentDetails = async (req, res) => {
 
   user.paymentDetails = user.paymentDetails || {};
   user.paymentDetails.status = status;
+  user.paymentDetails.verified = status === "approved";
   user.paymentDetails.reviewReason =
     status === "rejected" ? reason || "Not specified" : undefined;
   user.paymentDetails.reviewedBy = req.user._id;
